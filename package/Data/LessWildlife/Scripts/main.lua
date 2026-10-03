@@ -1,4 +1,4 @@
--- Configurable wildlife population reducer. See LICENSE.txt and UPSTREAM.json.
+-- Configurable wildlife population scaling. See LICENSE.txt and UPSTREAM.json.
 local here=assert(debug.getinfo(1,'S').source:gsub('^@',''):match('^(.*[/\\])'))
 local root=here..'../'
 local BOAR='/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_Base.NPCDef_Boar_Base_C'
@@ -7,7 +7,7 @@ local HOOK='/Script/Population.PopulationArea:OnBeginOverlapOuterBox'
 local MAX_ENTRIES,FRAME_ENTRIES,CACHE_LIMIT=64,128,4096
 local cache,slots,count,prune={}, {},0,1
 local system,frameFn,frame,frameEntries,frameTime
-local debugLogging,populationPercent=false,40
+local debugLogging,populationPercent=false,100
 local reduceBoars,reduceWolves=true,true
 local stats,lastSummary={},nil
 local function log(s)print('[Less Wildlife] '..s..'\n')end
@@ -18,7 +18,7 @@ local function method(o,name)
  if type(f)=='userdata' and f:type()=='UFunction' and f:IsValid() then return f end
 end
 local function percentage(value)
- if type(value)=='number' and value>=1 and value<=100 and value%1==0 then return value end
+ if type(value)=='number' and value>=10 and value<=200 and value%1==0 then return value end
 end
 local function readSettings()
  local path=root..'settings.ini'
@@ -32,7 +32,12 @@ local function readSettings()
     local value=line:match('^%s*debugLogging%s*=%s*([^;#]+)')
     if value then debugLogging=value:match('^%s*1%s*$')~=nil end
     value=line:match('^%s*populationPercent%s*=%s*([^;#]+)')
-    if value then populationPercent=percentage(tonumber(value)) or populationPercent end
+    if value then
+     local saved=tonumber(value)
+     -- Keep older 1..9 preferences at the closest supported value without rewriting the INI.
+     if saved and saved>=1 and saved<10 and saved%1==0 then saved=10 end
+     populationPercent=percentage(saved) or populationPercent
+    end
     value=line:match('^%s*reduceBoars%s*=%s*([^;#]+)')
     if tonumber(value)==0 or tonumber(value)==1 then reduceBoars=tonumber(value)==1 end
     value=line:match('^%s*reduceWolves%s*=%s*([^;#]+)')
@@ -41,7 +46,7 @@ local function readSettings()
   end
  elseif code==2 then
   local output=io.open(path,'w')
-  if output then output:write('[LessWildlife]\npopulationPercent = 40\nreduceBoars = 1\nreduceWolves = 1\ndebugLogging = 0\n');output:close() end
+  if output then output:write('[LessWildlife]\npopulationPercent = 100\nreduceBoars = 1\nreduceWolves = 1\ndebugLogging = 0\n');output:close() end
  end
 end
 local function record(key,n)
@@ -66,8 +71,8 @@ local function pathOf(value)
  if id:GetSubPathString():ToString()~='' then return end
  return path
 end
-local function reduced(n,percent)
- if n<=1 then return n end
+local function scaled(n,percent)
+ if n<=0 then return n end
  return math.max(1,math.floor(n*percent/100+.5))
 end
 local function capacity()
@@ -100,7 +105,7 @@ local function apply(area)
  local address=area:GetAddress()
  local entry=cache[address]
  local percent=populationPercent
- local settingsKey=percent+(reduceBoars and 128 or 0)+(reduceWolves and 256 or 0)
+ local settingsKey=percent+(reduceBoars and 256 or 0)+(reduceWolves and 512 or 0)
  if entry and valid(entry.object) and valid(entry.world) then
   if entry.blocked or (entry.done and entry.settingsKey==settingsKey)
    or (entry.attemptKey==settingsKey and (entry.failures or 0)>=3) then record('cached');return end
@@ -148,9 +153,9 @@ local function apply(area)
     end
     if not previous.released then
      -- Recompute from the original population, including after Apply or retry.
-     local enabled=(path==BOAR and reduceBoars) or (path==WOLF and reduceWolves)
-     local q=enabled and reduced(previous.originalQ,percent) or previous.originalQ
-     local m=enabled and math.max(q,reduced(previous.originalM,percent)) or previous.originalM
+     local enabled=percent~=100 and ((path==BOAR and reduceBoars) or (path==WOLF and reduceWolves))
+     local q=enabled and scaled(previous.originalQ,percent) or previous.originalQ
+     local m=enabled and math.max(q,scaled(previous.originalM,percent)) or previous.originalM
      if q~=quantity or m~=maximum then pending[#pending+1]={index=i,path=path,q=q,m=m,oldQ=quantity,oldM=maximum} end
     end
    end
@@ -181,7 +186,7 @@ local function apply(area)
  end
 end
 readSettings()
--- A missing optional menu does not affect population reduction.
+-- A missing optional menu does not affect population scaling.
 pcall(function()
  local api=dofile(here..'dmm_api.lua')
  api.subscribe('Local_LessWildlife',function(values)
@@ -214,7 +219,7 @@ initialize=function()
  if not ready then
   if tries<8 and type(ExecuteInGameThreadWithDelay)=='function' then
    initializing=true;ExecuteInGameThreadWithDelay(250,initialize)
-  else log('Population reduction unavailable: '..tostring(reason)) end
+  else log('Population scaling unavailable: '..tostring(reason)) end
  end
 end
 if type(RegisterLoadMapPostHook)=='function' then
