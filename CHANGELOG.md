@@ -9,3 +9,5 @@
 - Bound new-area work and cache size; keep unusually large or excess same-frame areas under game control.
 - Preserve already reduced entries during a partial-failure retry and recover after delayed hook readiness.
 - Add optional Logging with aggregated counts and callback timings.
+
+- Add separate Reduce boars and Reduce wolves On/Off settings, with original-population restoration on later encounters when Off.

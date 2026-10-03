@@ -8,6 +8,7 @@ local MAX_ENTRIES,FRAME_ENTRIES,CACHE_LIMIT=64,128,4096
 local cache,slots,count,prune={}, {},0,1
 local system,frameFn,frame,frameEntries,frameTime
 local debugLogging,populationPercent=false,40
+local reduceBoars,reduceWolves=true,true
 local stats,lastSummary={},nil
 local function log(s)print('[Less Wildlife] '..s..'\n')end
 local function valid(o)return o~=nil and o:IsValid()==true end
@@ -32,11 +33,15 @@ local function readSettings()
     if value then debugLogging=value:match('^%s*1%s*$')~=nil end
     value=line:match('^%s*populationPercent%s*=%s*([^;#]+)')
     if value then populationPercent=percentage(tonumber(value)) or populationPercent end
+    value=line:match('^%s*reduceBoars%s*=%s*([^;#]+)')
+    if tonumber(value)==0 or tonumber(value)==1 then reduceBoars=tonumber(value)==1 end
+    value=line:match('^%s*reduceWolves%s*=%s*([^;#]+)')
+    if tonumber(value)==0 or tonumber(value)==1 then reduceWolves=tonumber(value)==1 end
    end
   end
  elseif code==2 then
   local output=io.open(path,'w')
-  if output then output:write('[LessWildlife]\npopulationPercent = 40\ndebugLogging = 0\n');output:close() end
+  if output then output:write('[LessWildlife]\npopulationPercent = 40\nreduceBoars = 1\nreduceWolves = 1\ndebugLogging = 0\n');output:close() end
  end
 end
 local function record(key,n)
@@ -95,9 +100,10 @@ local function apply(area)
  local address=area:GetAddress()
  local entry=cache[address]
  local percent=populationPercent
+ local settingsKey=percent+(reduceBoars and 128 or 0)+(reduceWolves and 256 or 0)
  if entry and valid(entry.object) and valid(entry.world) then
-  if entry.blocked or (entry.done and entry.percent==percent)
-   or (entry.attemptPercent==percent and (entry.failures or 0)>=3) then record('cached');return end
+  if entry.blocked or (entry.done and entry.settingsKey==settingsKey)
+   or (entry.attemptKey==settingsKey and (entry.failures or 0)>=3) then record('cached');return end
  elseif entry then
   slots[entry.slot]=nil;cache[address]=nil;count=count-1;entry=nil
  end
@@ -117,8 +123,8 @@ local function apply(area)
  local world=area:GetWorld()
  if not valid(world) then record('deferred');return end
  entry=remember(area,world,address,entry)
- if entry.attemptPercent~=percent then
-  entry.attemptPercent=percent;entry.failures=0;entry.done=false
+ if entry.attemptKey~=settingsKey then
+  entry.attemptKey=settingsKey;entry.failures=0;entry.done=false
  end
  local started=os.clock()
  local ok,reason=pcall(function()
@@ -142,7 +148,9 @@ local function apply(area)
     end
     if not previous.released then
      -- Recompute from the original population, including after Apply or retry.
-     local q=reduced(previous.originalQ,percent);local m=math.max(q,reduced(previous.originalM,percent))
+     local enabled=(path==BOAR and reduceBoars) or (path==WOLF and reduceWolves)
+     local q=enabled and reduced(previous.originalQ,percent) or previous.originalQ
+     local m=enabled and math.max(q,reduced(previous.originalM,percent)) or previous.originalM
      if q~=quantity or m~=maximum then pending[#pending+1]={index=i,path=path,q=q,m=m,oldQ=quantity,oldM=maximum} end
     end
    end
@@ -163,7 +171,7 @@ local function apply(area)
    local saved=entry.edits[change.index];saved.quantity=change.q;saved.maximum=change.m
    record(change.path==BOAR and 'boars' or 'wolves')
   end
-  entry.percent=percent;entry.done=true
+  entry.settingsKey=settingsKey;entry.done=true
  end)
  local elapsed=os.clock()-started;frameTime=frameTime+elapsed
  if debugLogging then stats.maxMs=math.max(stats.maxMs or 0,elapsed*1000) end
@@ -178,6 +186,8 @@ pcall(function()
  local api=dofile(here..'dmm_api.lua')
  api.subscribe('Local_LessWildlife',function(values)
   populationPercent=percentage(values.populationPercent) or populationPercent
+  if values.reduceBoars==0 or values.reduceBoars==1 then reduceBoars=values.reduceBoars==1 end
+  if values.reduceWolves==0 or values.reduceWolves==1 then reduceWolves=values.reduceWolves==1 end
   if values.debugLogging~=nil then debugLogging=values.debugLogging==1 end
   stats={};lastSummary=nil
  end)

@@ -17,9 +17,9 @@ One population hook handles both species. Completed areas are cached, with no ba
 
 ## Population settings
 
-Use Mod Settings → Less Wildlife → Population remaining and Apply. One setting controls both species, from 1% to 100%; 40% is the default. Changes take effect as areas are encountered again. Already spawned animals are unaffected. Setting 100% restores the original values for entries still controlled by this mod; changes made by the game or another mod are preserved.
+Use Mod Settings → Less Wildlife → Population remaining and Apply. Population remaining ranges from 1% to 100%; 40% is the default. Reduce boars and Reduce wolves independently switch the reduction On or Off, both defaulting to On. Off restores that species' original values still controlled by this mod; it does not remove the animals. Changes take effect as areas are encountered again. Already spawned animals are unaffected. Setting 100% restores the original values for entries still controlled by this mod; changes made by the game or another mod are preserved.
 
-Without the menu, close the game and set `populationPercent = 40` to your chosen integer from 1 to 100 under `[LessWildlife]` in the mod's `settings.ini`. This file is created on first launch and is not bundled in the archive.
+Without the menu, close the game and set `populationPercent = 40` to your chosen integer from 1 to 100 under `[LessWildlife]` in the mod's `settings.ini`. Set `reduceBoars = 0` or `reduceWolves = 0` to turn off the respective reduction, or `1` to turn it on. Missing toggle keys default to On. This file is created on first launch and is not bundled in the archive.
 
 ## Logging
 
