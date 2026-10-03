@@ -1,0 +1,29 @@
+{
+  "purpose": "Local personal combined wildlife mod; no remote publication requested.",
+  "inspected": "2026-10-03",
+  "originals": [
+    {
+      "name": "LessBoars",
+      "author": "MrSecondPlayer",
+      "version": "1.0.0",
+      "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/326",
+      "inspectedDeployedScriptSha256": "7e3e50d6056cfac77b0e7df5f73bc55858117dcc3666d6a3b3e1dc12b5f4198c",
+      "bundled": false
+    },
+    {
+      "name": "LessWolves",
+      "author": "MrSecondPlayer",
+      "version": "1.0.0",
+      "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/318",
+      "inspectedDeployedScriptSha256": "94d3afeb337781979b4b5323f492503552b00ed01e647f8fe3ff17e1f28b2ae9",
+      "bundled": false
+    }
+  ],
+  "menuHelper": {
+    "version": "1.0.6",
+    "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/271",
+    "file": "Integration Guide/example/Scripts/dmm_api.lua",
+    "sha256": "6bb667bffc543d1c5c1b36ab6da66c621d6c81c9ee46f94f0f6339cae9cc884c",
+    "permission": "Integration guide explicitly instructs authors to copy this helper unchanged."
+  }
+}
