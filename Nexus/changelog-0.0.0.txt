@@ -1,0 +1,6 @@
+Initial Nexus release.
+- Adjust ordinary boar and wolf populations from 10% to 200%; 100% is normal and the default.
+- Switch boar and wolf adjustments On or Off independently.
+- Increase populations up to twice their original size, including groups starting with one animal.
+- Return to normal populations on later encounters by choosing 100% or turning a species adjustment Off.
+- Enable optional Logging for troubleshooting.

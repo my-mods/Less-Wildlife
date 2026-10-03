@@ -1,0 +1,1 @@
+Adjust ordinary boar herds and wolf packs from 10% to 200%, with separate On/Off controls for each species. 100% is the normal population and the default; 200% doubles it. Configure through Mod Settings.

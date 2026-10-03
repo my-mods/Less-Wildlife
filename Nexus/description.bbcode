@@ -1,0 +1,51 @@
+[size=5][b][color=#E8C88A]Less Wildlife[/color][/b][/size]
+
+Adjust boar herds and wolf packs from [b]10% to 200%[/b], with a separate switch for each species. [b]100% is the normal population and the default[/b]; 200% doubles the original population.
+
+Only ordinary wild boars and wolves are affected. Quest and named variants, other creatures, health and damage keep their normal values. Positive populations always retain at least one animal.
+
+[size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
+
+Open [b]Mod Settings > Less Wildlife[/b], choose your settings and press Apply. Population changes take effect on later area encounters.
+
+[list]
+[*][b][color=#A8D5C2]Population:[/color][/b] 10% to 200% in 1% steps. Shared by the enabled species; default 100%. Quantities are rounded to the nearest animal.
+[*][b][color=#A8D5C2]Adjust boars:[/color][/b] On applies the selected percentage to ordinary boar herds. Off restores original values still controlled by this mod. Default: On.
+[*][b][color=#A8D5C2]Adjust wolves:[/color][/b] The same independent choice for ordinary wolf packs. Default: On.
+[*][b][color=#A8D5C2]Logging:[/color][/b] Writes aggregated population counts and timings to UE4SS.log. Default: Off.
+[/list]
+
+[color=#E6B980]Off disables population scaling for that species; it does not remove the animals.[/color] Already spawned animals are unaffected. Setting Population to 100% also restores original values still controlled by this mod. Changes made by the game or another mod are preserved.
+
+[size=3][b][color=#A8D5C2]Manual configuration[/color][/b][/size]
+
+Launch the game once to create settings.ini, then close it. Open this file inside your The Blood of Dawnwalker game folder:
+
+[code]Dawnwalker\Binaries\Win64\ue4ss\Mods\LessWildlife\settings.ini[/code]
+
+[code][LessWildlife]
+populationPercent = 100
+reduceBoars = 1
+reduceWolves = 1
+debugLogging = 0[/code]
+
+Use an integer from 10 to 200 for populationPercent. For the switches, use 0 for Off or 1 for On. Save and restart the game. Missing species-switch keys default to On.
+
+Unusually large areas or very dense bursts of encounters keep their current population values until a later encounter can be handled.
+
+[size=4][b][color=#E8C88A]Installation[/color][/b][/size]
+
+[list]
+[*][b][color=#A8D5C2]Vortex:[/color][/b] Install Less-Wildlife.zip through Vortex, enable it and deploy.
+[*][b][color=#A8D5C2]Manual:[/color][/b] Copy the archive's Data/LessWildlife folder into <The Blood of Dawnwalker>/Dawnwalker/Binaries/Win64/ue4ss/Mods, preserving the folder structure.
+[/list]
+
+[size=4][b][color=#E8C88A]Credits and source[/color][/b][/size]
+
+Inspired by [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/326]Less Boars[/url] and [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/318]Less Wolves[/url] by MrSecondPlayer, including their 40% preset and ordinary-species selection. This custom implementation does not include the original scripts or artwork.
+
+Thanks to the UE4SS contributors and to mmarcussa for [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/271]Mod Setting Menu[/url] and its unchanged integration helper, included under the guide's copying permission.
+
+Banner and thumbnail are AI-enhanced from [url=https://open.video/@jasonsvideogamessource-com/v/the-blood-of-dawnwalker-prologue-fist-fight-stance-fight-boars-with-fists-unblockable-attacks]gameplay by Jason's Video Games Source[/url], used under the creator's stated reuse permission with credit. HUD removed and title added. Reconstructed details may differ from the original game frame. Promotional artwork, not a before-and-after comparison.
+
+[url=https://github.com/my-mods/Less-Wildlife]Source code and documentation[/url]. Unofficial community mod. The Blood of Dawnwalker and its imagery belong to Rebel Wolves and their respective rights holders. See LICENSE.txt for rights and third-party notices.

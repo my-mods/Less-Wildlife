@@ -1,0 +1,55 @@
+{
+  "title": "Less Wildlife",
+  "game": "thebloodofdawnwalker",
+  "gameId": 9719,
+  "category": "Gameplay",
+  "author": "oOCamilleOo",
+  "uploader": "oOCamilleOo",
+  "language": "English",
+  "version": "0.0.0",
+  "tags": [
+    "Gameplay",
+    "Quality of Life",
+    "AI-Generated Content",
+    "AI Media"
+  ],
+  "adult": false,
+  "source": "https://github.com/my-mods/Less-Wildlife",
+  "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/711",
+  "modId": 711,
+  "requirementsMode": "mod-level",
+  "file": {
+    "name": "Less Wildlife",
+    "archive": "Less-Wildlife.zip",
+    "version": "0.0.0",
+    "category": "main",
+    "allowModManagerDownload": true,
+    "primaryModManagerDownload": true,
+    "showRequirementsPopUp": true
+  },
+  "requirements": [
+    {
+      "name": "Dawnwalker-compatible UE4SS",
+      "anyOf": [
+        {
+          "name": "UE4SS for Dawnwalker",
+          "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/18"
+        },
+        {
+          "name": "UE4SS for BoD",
+          "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/283"
+        }
+      ],
+      "note": "Install one loader providing native hooks, delayed game-thread callbacks, GetFrameCount and owned soft-reference path methods. These are alternatives, not two required installs."
+    },
+    {
+      "name": "Mod Setting Menu",
+      "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/271",
+      "minimumVersion": "1.0.6",
+      "optional": true,
+      "note": "Optional in-game configuration and Apply; requires HookProcessConsoleExec=1 in the loader profile."
+    }
+  ],
+  "donationPoints": false,
+  "permissionsFile": "permissions.txt"
+}

@@ -1,0 +1,1 @@
+Configurable ordinary boar and wolf populations (10–200%, default 100%), with independent species switches and optional Mod Settings controls. 100% is normal; 200% doubles the population. Changes apply on later encounters.

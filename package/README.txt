@@ -1,6 +1,6 @@
 # Less Wildlife
 
-[Published 0.0.0 download](https://github.com/my-mods/Less-Wildlife/releases/tag/v0.0.0)
+[Download on Nexus Mods](https://www.nexusmods.com/thebloodofdawnwalker/mods/711?tab=files)
 
 Sets ordinary wild-boar herds and wolf packs to a configurable percentage of their original size. Choose from 10% to 200%: 100% is the normal population and the default, while 200% doubles it. Quantities are rounded to the nearest animal, with at least one animal wherever the original population was positive. Quest and named variants, other creatures, health and damage keep their normal values.
 
