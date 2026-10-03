@@ -1,7 +1,6 @@
 # Less Wildlife 0.0.0
 
-- Configure ordinary wild-boar herds and wolf packs from 1% to 100%, with a 40% default and one shared runtime.
-- Cache completed areas and bound new-area processing.
-- Add optional Logging in Mod Settings.
-
-- Add separate Reduce boars and Reduce wolves On/Off settings, with original-population restoration on later encounters when Off.
+- Set ordinary boar and wolf populations from 1% to 100%, with a 40% default and a minimum of one animal for positive populations.
+- Independently turn Reduce boars and Reduce wolves On or Off through Mod Settings.
+- Restore owned original population values on later encounters when a reduction is Off.
+- Share one bounded population hook and cache, with optional aggregated Logging.

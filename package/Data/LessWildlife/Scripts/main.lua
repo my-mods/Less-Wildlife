@@ -1,4 +1,4 @@
--- Local combined wildlife population reducer. See LICENSE.txt and UPSTREAM.json.
+-- Configurable wildlife population reducer. See LICENSE.txt and UPSTREAM.json.
 local here=assert(debug.getinfo(1,'S').source:gsub('^@',''):match('^(.*[/\\])'))
 local root=here..'../'
 local BOAR='/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_Base.NPCDef_Boar_Base_C'

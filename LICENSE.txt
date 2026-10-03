@@ -1,14 +1,19 @@
-Local personal-use package.
+Less Wildlife
+Copyright (c) 2026 oOCamilleOo. All rights reserved.
 
-Original Less Boars and Less Wolves: MrSecondPlayer.
-Source references: https://www.nexusmods.com/thebloodofdawnwalker/mods/326
-                  https://www.nexusmods.com/thebloodofdawnwalker/mods/318
+This notice covers the custom Less Wildlife implementation and documentation.
+Public availability does not grant a separate license to redistribute or
+relicense this implementation.
 
-The original authors' published permissions reserve modification and redistribution.
-This personal combined implementation and its provenance are retained locally;
-no permission to publish or redistribute the original mods is granted here.
-The original runtime scripts and artwork are not included in this archive.
+Credits
+The population preset and species selection were inspired by Less Boars and
+Less Wolves by MrSecondPlayer:
+https://www.nexusmods.com/thebloodofdawnwalker/mods/326
+https://www.nexusmods.com/thebloodofdawnwalker/mods/318
+Their runtime scripts and artwork are not included. Their permissions remain
+with their author; this package grants no rights to those original mods.
 
+Third-party helper
 The unchanged optional Mod Setting Menu dmm_api.lua helper is included under
 the integration guide's explicit instruction to copy that helper unchanged.
 Its source and exact byte provenance are recorded in UPSTREAM.json.
