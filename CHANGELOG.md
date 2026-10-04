@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add optional wolf-to-bandit encounters, retaining the selected pack size.
+- Add missing settings on startup and consolidate duplicate keys so existing configurations remain editable in Mod Settings.
 - Expand Population to 10–200%, with 100% as the normal population and new default.
 - Allow positive populations of one animal to grow to two at 200%.
 - Rename the independent species switches to Adjust boars and Adjust wolves; Off restores owned original values.

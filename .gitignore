@@ -2,3 +2,4 @@
 *.zip
 AGENTS.md
 package/Data/LessWildlife/settings.ini
+build/

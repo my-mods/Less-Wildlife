@@ -2,6 +2,8 @@
 
 Adjust boar herds and wolf packs from [b]10% to 200%[/b], with a separate switch for each species. [b]100% is the normal population and the default[/b]; 200% doubles the original population.
 
+The optional [b]Wolves to bandits[/b] setting replaces eligible newly generated ordinary wolf packs with bandits, keeping their selected group size. It defaults to Off.
+
 Only ordinary wild boars and wolves are affected. Quest and named variants, other creatures, health and damage keep their normal values. Positive populations always retain at least one animal.
 
 [size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
@@ -12,6 +14,7 @@ Open [b]Mod Settings > Less Wildlife[/b], choose your settings and press Apply. 
 [*][b][color=#A8D5C2]Population:[/color][/b] 10% to 200% in 1% steps. Shared by the enabled species; default 100%. Quantities are rounded to the nearest animal.
 [*][b][color=#A8D5C2]Adjust boars:[/color][/b] On applies the selected percentage to ordinary boar herds. Off restores original values still controlled by this mod. Default: On.
 [*][b][color=#A8D5C2]Adjust wolves:[/color][/b] The same independent choice for ordinary wolf packs. Default: On.
+[*][b][color=#A8D5C2]Wolves to bandits:[/color][/b] Off keeps wolves; On replaces eligible new wolf encounters with bandits. Existing encounters are unaffected. Default: Off.
 [*][b][color=#A8D5C2]Logging:[/color][/b] Writes aggregated population counts and timings to UE4SS.log. Default: Off.
 [/list]
 
@@ -27,9 +30,10 @@ Launch the game once to create settings.ini, then close it. Open this file insid
 populationPercent = 100
 reduceBoars = 1
 reduceWolves = 1
+wolfReplacementChance = 0
 debugLogging = 0[/code]
 
-Use an integer from 10 to 200 for populationPercent. For the switches, use 0 for Off or 1 for On. Save and restart the game. Missing species-switch keys default to On.
+Use an integer from 10 to 200 for populationPercent. For population and Logging switches, use 0 for Off or 1 for On. For wolfReplacementChance, use 0 for Off or 100 for On. Save and restart the game. Missing species-switch keys default to On.
 
 Unusually large areas or very dense bursts of encounters keep their current population values until a later encounter can be handled.
 

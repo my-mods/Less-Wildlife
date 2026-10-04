@@ -40,7 +40,7 @@
           "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/283"
         }
       ],
-      "note": "Install one loader providing native hooks, delayed game-thread callbacks, GetFrameCount and owned soft-reference path methods. These are alternatives, not two required installs."
+      "note": "Install one loader providing C++ mods, native hooks, reflected property operations, delayed game-thread callbacks, GetFrameCount and owned soft-reference path methods. These are alternatives, not two required installs."
     },
     {
       "name": "Mod Setting Menu",

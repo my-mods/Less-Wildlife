@@ -9,6 +9,7 @@ local cache,slots,count,prune={}, {},0,1
 local system,frameFn,frame,frameEntries,frameTime
 local debugLogging,populationPercent=false,100
 local reduceBoars,reduceWolves=true,true
+local wolfReplacementChance,settingsReady=0,false
 local stats,lastSummary={},nil
 local function log(s)print('[Less Wildlife] '..s..'\n')end
 local function valid(o)return o~=nil and o:IsValid()==true end
@@ -21,32 +22,17 @@ local function percentage(value)
  if type(value)=='number' and value>=10 and value<=200 and value%1==0 then return value end
 end
 local function readSettings()
- local path=root..'settings.ini'
- local f,why,code=io.open(path,'r')
- if f then
-  local data=f:read('*a'):gsub('^\239\187\191','');f:close()
-  local section
-  for line in data:gmatch('[^\r\n]+') do
-   section=line:match('^%s*%[([^%]]+)%]') or section
-   if section=='LessWildlife' then
-    local value=line:match('^%s*debugLogging%s*=%s*([^;#]+)')
-    if value then debugLogging=value:match('^%s*1%s*$')~=nil end
-    value=line:match('^%s*populationPercent%s*=%s*([^;#]+)')
-    if value then
-     local saved=tonumber(value)
-     -- Keep older 1..9 preferences at the closest supported value without rewriting the INI.
-     if saved and saved>=1 and saved<10 and saved%1==0 then saved=10 end
-     populationPercent=percentage(saved) or populationPercent
-    end
-    value=line:match('^%s*reduceBoars%s*=%s*([^;#]+)')
-    if tonumber(value)==0 or tonumber(value)==1 then reduceBoars=tonumber(value)==1 end
-    value=line:match('^%s*reduceWolves%s*=%s*([^;#]+)')
-    if tonumber(value)==0 or tonumber(value)==1 then reduceWolves=tonumber(value)==1 end
-   end
-  end
- elseif code==2 then
-  local output=io.open(path,'w')
-  if output then output:write('[LessWildlife]\npopulationPercent = 100\nreduceBoars = 1\nreduceWolves = 1\ndebugLogging = 0\n');output:close() end
+ local settings=dofile(here..'Settings.lua')
+ local values,ready,why=settings.load(root..'settings.ini')
+ populationPercent=values.populationPercent
+ reduceBoars,reduceWolves=values.reduceBoars==1,values.reduceWolves==1
+ debugLogging=values.debugLogging==1
+ wolfReplacementChance,settingsReady=values.wolfReplacementChance,ready
+ if not ready then log('Settings upgrade failed; replacement stays Off: '..tostring(why)) end
+end
+local function configureReplacement()
+ if type(_LWConfigurePrototype)=='function' then
+  _LWConfigurePrototype(settingsReady and wolfReplacementChance or 0,debugLogging and 1 or 0)
  end
 end
 local function record(key,n)
@@ -186,6 +172,7 @@ local function apply(area)
  end
 end
 readSettings()
+configureReplacement()
 -- A missing optional menu does not affect population scaling.
 pcall(function()
  local api=dofile(here..'dmm_api.lua')
@@ -194,6 +181,8 @@ pcall(function()
   if values.reduceBoars==0 or values.reduceBoars==1 then reduceBoars=values.reduceBoars==1 end
   if values.reduceWolves==0 or values.reduceWolves==1 then reduceWolves=values.reduceWolves==1 end
   if values.debugLogging~=nil then debugLogging=values.debugLogging==1 end
+  if values.wolfReplacementChance==0 or values.wolfReplacementChance==100 then wolfReplacementChance=values.wolfReplacementChance end
+  configureReplacement()
   stats={};lastSummary=nil
  end)
 end)
@@ -207,6 +196,9 @@ initialize=function()
   system=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
   assert(valid(system),'KismetSystemLibrary unavailable')
   frameFn=assert(method(system,'GetFrameCount'),'GetFrameCount unavailable')
+  if type(_LWStartPrototype)=='function' then
+   if not _LWStartPrototype() then log('Native replacement unavailable; population controls remain active.') end
+  elseif wolfReplacementChance~=0 then log('Native replacement helper is missing; population controls remain active.') end
   local before,after=RegisterHook(HOOK,function(context)
    record('overlaps')
    local ok=pcall(function()apply(context:get())end)

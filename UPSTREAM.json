@@ -25,5 +25,16 @@
     "file": "Integration Guide/example/Scripts/dmm_api.lua",
     "sha256": "6bb667bffc543d1c5c1b36ab6da66c621d6c81c9ee46f94f0f6339cae9cc884c",
     "permission": "Integration guide explicitly instructs authors to copy this helper unchanged."
+  },
+  "nativeHelper": {
+    "sdk": "97b7e501c19d8b2b7c662feee73aaa0dc1f0a4d1",
+    "unrealHeaders": "eb40a05f49509bdeb1ac39287032b60af585cca8",
+    "minhook": "c3fcafdc10146beb5919319d0683e44e3c30d537",
+    "fmt": "40626af88bd7df9a5fb80be7b25ac85b122d6c21",
+    "licenses": [
+      "LICENSES/UE4SS.txt",
+      "LICENSES/MinHook.txt",
+      "LICENSES/fmt.txt"
+    ]
   }
 }

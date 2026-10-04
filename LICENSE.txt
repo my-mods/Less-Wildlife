@@ -17,3 +17,8 @@ Third-party helper
 The unchanged optional Mod Setting Menu dmm_api.lua helper is included under
 the integration guide's explicit instruction to copy that helper unchanged.
 Its source and exact byte provenance are recorded in UPSTREAM.json.
+
+Native helper dependencies
+The native helper uses UE4SS interfaces, MinHook and fmt. Their separate
+licenses are included in LICENSES/UE4SS.txt, LICENSES/MinHook.txt and
+LICENSES/fmt.txt. These third-party licenses retain their original terms.
