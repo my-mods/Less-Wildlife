@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reduce repeated work when loading wildlife encounters.
 - Fix replacement bandits appearing naked, red, or with an unrelated character's appearance.
 - Fix wolf replacement being unavailable at startup even when Wolves to bandits is On.
 - Allow ordinary roaming wolf packs with existing territory boundaries to be replaced.

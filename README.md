@@ -27,7 +27,7 @@ Without the menu, close the game and set `populationPercent = 100` to your chose
 
 ## Boar and wolf replacement
 
-Set Boars to bandits, Wolves to bandits, or both to On and Apply before entering a new population area. Already generated encounters are left alone. These switches are independent of Adjust boars and Adjust wolves, which control quantity. The replacement switches accept only Off or On, represented by `boarReplacementChance = 0` or `100` and `wolfReplacementChance = 0` or `100` in `settings.ini`. Enabling both replaces every eligible new boar herd and wolf pack with bandits. Other replacement outcomes and random percentages are not available yet.
+Set Boars to bandits, Wolves to bandits, or both to On and Apply before entering a new population area. Already generated encounters are left alone. These switches are independent of Adjust boars and Adjust wolves, which control quantity. The replacement switches accept only Off or On, represented by `boarReplacementChance = 0` or `100` and `wolfReplacementChance = 0` or `100` in `settings.ini`. Enabling both selects eligible new boar herds and wolf packs for replacement. Groups skipped during a dense loading burst remain unchanged. Other replacement outcomes and random percentages are not available yet.
 
 Only wildlife entries with random spawn locations, an encounter role and next-day respawning are eligible. Quest-controlled encounters, entries with authored AI overrides or start conditions, and fixed scripted spawn points are left alone. Herds and packs retain their existing roaming boundaries. Bandits use their normal equipment, AI and loot; existing animals are not destroyed and replaced after spawning.
 

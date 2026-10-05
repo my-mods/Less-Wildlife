@@ -38,7 +38,26 @@ then invokes normal game initialization once. Initialized human appearances,
 ordinary bandits, shared assets, inventory and unrelated save fields are retained.
 The hook adds no polling or world scans.
 
+Wildlife definition comparisons use package and asset FNames cached at binding,
+with numeric suffixes retained. Encounter validation finishes before allocating
+or importing replacement values. Engine property operations still construct,
+copy and destroy soft references; the cache contains no UObject pointers or
+borrowed property values. The per-area and per-frame limits remain unchanged.
+
 The prototype exposes independent boar-to-bandit and wolf-to-bandit replacement at 0 or 100 only. `WildlifeDefinitions.hpp` lists exact supported stock definitions, including brown, white and astral wolves. The Lua population matcher uses the same definitions.
 `ReplacementPolicy.hpp` contains the planned percentage/outcome selection
 logic; it is not connected to respawn-cycle persistence yet. Other enemy
 outcomes and suppression are not enabled in this prototype.
+
+`EncounterCycle.hpp` implements the engine-independent decision lifecycle and
+a 40-byte versioned record format. Restored records keep their outcome despite
+settings changes. Partial refills and forced respawns cannot start a new cycle;
+natural advancement requires confirmed completion and eligibility with no
+remaining members. No spawn stays pending until the game acknowledges actual
+suppression. Invalid identities, records and random draws are rejected.
+
+This decision layer is not connected to the game save or respawn services.
+The adapter must supply verified lifecycle events and persist each record in
+the matching game save before applying it. A successful respawn attempt alone
+does not establish a new cycle. Definition codes in record version 1 refer to
+the current ten-entry stock list; reordering that list requires migration.

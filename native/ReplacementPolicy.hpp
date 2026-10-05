@@ -20,8 +20,13 @@ Outcome choose(const Options& options, Uniform&& uniform) {
     for (unsigned i = 0; i != pool.size(); ++i)
         if (options.allowed[i]) pool[count++] = static_cast<Outcome>(i + 1);
     if (!count || !options.chance) return Outcome::Original;
-    if (options.chance != 100 && uniform(100) >= options.chance) return Outcome::Original;
-    return pool[count == 1 ? 0 : uniform(count)];
+    auto draw = [&](unsigned bound) {
+        const auto value = uniform(bound);
+        if (value < 0 || static_cast<std::uint64_t>(value) >= bound) throw std::out_of_range("replacement random draw");
+        return static_cast<unsigned>(value);
+    };
+    if (options.chance != 100 && draw(100) >= options.chance) return Outcome::Original;
+    return pool[count == 1 ? 0 : draw(count)];
 }
 
 // The first in-game gate intentionally offers only the two deterministic

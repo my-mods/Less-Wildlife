@@ -118,6 +118,22 @@ UClass* stubType{};
 UClass* humanoidType{};
 FBoolProperty* randomAppearanceProperty{};
 FName banditClassName;
+struct DefinitionKey {
+    FName package, asset;
+    bool operator==(const DefinitionKey& other) const { return package == other.package && asset == other.asset; }
+};
+std::array<DefinitionKey, wildlifeDefinitions.size()> wildlifeKeys;
+DefinitionKey banditKey;
+
+void bindDefinitionKeys() {
+    auto key = [](std::wstring_view path) {
+        const auto dot = path.rfind(L'.');
+        require(dot != std::wstring_view::npos, "invalid definition path");
+        return DefinitionKey{FName(std::wstring(path.substr(0, dot)).c_str()), FName(std::wstring(path.substr(dot + 1)).c_str())};
+    };
+    for (size_t i = 0; i < wildlifeKeys.size(); ++i) wildlifeKeys[i] = key(wildlifeDefinitions[i].path);
+    banditKey = key(bandit);
+}
 
 void bindSchema() {
     auto find = [](const wchar_t* path) { return UObjectGlobals::StaticFindObject<UObject*>(nullptr, nullptr, path); };
@@ -173,6 +189,7 @@ void bindSchema() {
     field(rowType, L"NPCRole", 0x90, 1, L"EnumProperty");
     field(rowType, L"RespawnPolicy", 0xc0, 1, L"EnumProperty");
     require(UDataTable::MemberOffsets.at(L"RowMap") == 0x30, "data table map layout unavailable");
+    bindDefinitionKeys();
 }
 
 // Read only the independently checked engine representation. Never construct a
@@ -182,6 +199,14 @@ std::wstring softPath(const void* value) {
     auto package = read<FName>(value, 8).ToString();
     auto asset = read<FName>(value, 16).ToString();
     return package + L"." + asset;
+}
+DefinitionKey definitionKey(const void* value) {
+    require(read<int32_t>(value, 32) == 0, "subobject soft reference not supported");
+    return {read<FName>(value, 8), read<FName>(value, 16)};
+}
+Species definitionSpecies(const DefinitionKey& key) {
+    for (size_t i = 0; i < wildlifeKeys.size(); ++i) if (key == wildlifeKeys[i]) return wildlifeDefinitions[i].species;
+    return Species::None;
 }
 bool emptyTags(const void* value) {
     return read<int32_t>(value, 8) == 0 && read<int32_t>(value, 24) == 0;
@@ -211,12 +236,12 @@ struct Operation {
         definitionProperty->CopyCompleteValue(destination, replacement->data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, true);
     }
-    bool readbackMatches() { return softPath(destination) == bandit && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60); }
+    bool readbackMatches() { return definitionKey(destination) == banditKey && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60); }
     void restore() {
         definitionProperty->CopyCompleteValue(destination, backup.data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, wasHostile);
     }
-    bool restored() { return softPath(destination) == softPath(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile; }
+    bool restored() { return definitionKey(destination) == definitionKey(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile; }
 };
 // Stable addresses and RAII engine values; no borrowed row survives this call.
 struct OperationList {
@@ -232,9 +257,9 @@ void transform(UObject* area) {
     auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x360);
     require(arrayValid(entries, 64) && arrayValid(activeEntries, 64), "population entry limit or layout");
     const auto settings = replacementMask.load();
-    auto selected = [settings](const std::wstring& path) { return (settings & static_cast<unsigned>(speciesOf(path))) != 0; };
+    auto selected = [settings](const DefinitionKey& key) { return (settings & static_cast<unsigned>(definitionSpecies(key))) != 0; };
     bool hasWildlife = false;
-    for (int i = 0; i < entries.count; ++i) if (selected(softPath(entries.data + i * 0x100))) { hasWildlife = true; break; }
+    for (int i = 0; i < entries.count; ++i) if (selected(definitionKey(entries.data + i * 0x100))) { hasWildlife = true; break; }
     if (!hasWildlife) { if (logging) ++stats.nonWildlife; return; }
     if (logging) ++stats.wildlife;
     auto conditions = read<Array>(area, 0x350);
@@ -247,10 +272,11 @@ void transform(UObject* area) {
     if (!table || table->GetRowStruct() != rowType) { skip(area, SkipReason::Table); return; }
     auto& rows = table->GetRowMap();
     require(rows.Num() == activeEntries.count && rows.Num() <= 64 && rows.GetMaxIndex() <= 64, "generated row mapping changed");
-    Value replacement(definitionProperty);
-    auto end = definitionProperty->ImportText_Direct(bandit, replacement.data, area, 0, nullptr);
-    require(end && !*end && softPath(replacement.data) == bandit, "bandit soft reference import failed");
-    OperationList operations;
+    // Finish eligibility and row validation before any engine property import
+    // or backup allocation. Scripted or mixed groups incur no preparation work.
+    struct PlannedRow { void* row; void* entry; };
+    std::array<PlannedRow, 64> planned{};
+    size_t plannedCount = 0;
     unsigned ordinal = 0, boarRows = 0, wolfRows = 0;
     for (auto& pair : rows) {
         auto row = pair.Value;
@@ -262,22 +288,28 @@ void transform(UObject* area) {
         for (size_t j = 0; j < separator; ++j) { require(key[j] >= L'0' && key[j] <= L'9', "invalid row index"); index = index * 10 + key[j] - L'0'; }
         require(index < static_cast<unsigned>(entries.count), "population source row index outside entries");
         auto source = entries.data + index * 0x100;
-        auto sourcePath = softPath(source);
-        require(softPath(current) == sourcePath, "active/source row mapping mismatch");
+        auto sourcePath = definitionKey(source);
+        require(definitionKey(current) == sourcePath, "active/source row mapping mismatch");
         if (!selected(sourcePath)) continue;
         // Plan every selected row before writes so an ineligible member cannot
         // leave a partially converted encounter. Disabled species stay intact.
         auto reason = entryReason(source);
         if (reason == SkipReason::None) reason = entryReason(current);
         if (reason != SkipReason::None) { skip(area, reason); return; }
-        require(softPath(row + 0x30) == sourcePath && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
+        require(definitionKey(row + 0x30) == sourcePath && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
                 "generated wildlife row changed externally");
         require(read<uint64_t>(row, 0x10) == 0 && read<uint64_t>(row, 0x58) == 0 && read<uint64_t>(row, 0x60) == 0
                 && read<uint64_t>(row, 0x68) == 0 && emptyTags(row + 0x70), "authored wildlife AI overrides need explicit handling");
-        operations.values.push_back(std::make_unique<Operation>(row, current, replacement));
-        if (speciesOf(sourcePath) == Species::Boar) ++boarRows; else ++wolfRows;
+        planned[plannedCount++] = {row, current};
+        if (definitionSpecies(sourcePath) == Species::Boar) ++boarRows; else ++wolfRows;
     }
-    if (operations.values.empty()) return;
+    if (!plannedCount) return;
+    Value replacement(definitionProperty);
+    auto end = definitionProperty->ImportText_Direct(bandit, replacement.data, area, 0, nullptr);
+    require(end && !*end && definitionKey(replacement.data) == banditKey, "bandit soft reference import failed");
+    OperationList operations;
+    operations.values.reserve(plannedCount);
+    for (size_t i = 0; i < plannedCount; ++i) operations.values.push_back(std::make_unique<Operation>(planned[i].row, planned[i].entry, replacement));
     auto result = commit(operations);
     if (result == TransactionResult::RollbackFailed) { failed = true; warning(L"Replacement disabled: rollback could not be verified. Population controls remain available."); }
     else if (result == TransactionResult::RolledBack) { if (logging) ++stats.rolledBack; warning(L"Replacement rolled back; original encounter retained."); }
