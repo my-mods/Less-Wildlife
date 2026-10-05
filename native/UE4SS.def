@@ -6,6 +6,7 @@ EXPORTS
     ??0FName@Unreal@RC@@QEAA@XZ
     ??1CppUserModBase@RC@@UEAA@XZ
     ??1FUObjectDeleteListener@Unreal@RC@@UEAA@XZ
+    ??8FName@Unreal@RC@@QEBA_NV012@@Z
     ?AddUObjectDeleteListener@FUObjectArray@Unreal@RC@@SAXPEAVFUObjectDeleteListener@23@@Z
     ?AllocateAndInitializeValue@FProperty@Unreal@RC@@QEBAPEAXXZ
     ?CopyCompleteValue@FProperty@Unreal@RC@@QEBAXPEAXPEBX@Z
@@ -16,14 +17,17 @@ EXPORTS
     ?GetByteMask@FBoolProperty@Unreal@RC@@QEAAAEAEXZ
     ?GetByteOffset@FBoolProperty@Unreal@RC@@QEAAAEAEXZ
     ?GetClass@FField@Unreal@RC@@QEAA?AVFFieldClassVariant@23@XZ
+    ?GetClassPrivate@UObjectBase@Unreal@RC@@QEAAAEAPEAVUClass@23@XZ
     ?GetElementSize@FProperty@Unreal@RC@@QEAAAEAHXZ
     ?GetFieldMask@FBoolProperty@Unreal@RC@@QEAAAEAEXZ
     ?GetFullName@UObject@Unreal@RC@@QEBA?AV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@PEAV123@@Z
     ?GetFunctionByNameInChain@UObject@Unreal@RC@@QEAAPEAVUFunction@23@PEB_W@Z
     ?GetInternalIndex@UObjectBase@Unreal@RC@@QEAAHXZ
     ?GetName@FFieldClassVariant@Unreal@RC@@QEBA?AV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@XZ
+    ?GetNamePrivate@UObjectBase@Unreal@RC@@QEBAAEBVFName@23@XZ
     ?GetOffset_Internal@FProperty@Unreal@RC@@QEAAAEAHXZ
     ?GetParmsSize@UFunction@Unreal@RC@@QEAAAEAGXZ
+    ?GetPathName@UObject@Unreal@RC@@QEBA?AV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@PEAV123@@Z
     ?GetPropertiesSize@UStruct@Unreal@RC@@QEAAAEAHXZ
     ?GetRowMap@UDataTable@Unreal@RC@@QEAAAEAV?$TMap@VFName@Unreal@RC@@PEAEVFDefaultSetAllocator@23@U?$TDefaultMapHashableKeyFuncs@VFName@Unreal@RC@@PEAE$0A@@23@@23@XZ
     ?GetRowStruct@UDataTable@Unreal@RC@@QEAAAEAV?$TObjectPtr@VUScriptStruct@Unreal@RC@@@23@XZ

@@ -24,9 +24,19 @@ UE4SS.def declares only the required host imports. The DLL exports
 
 The population interception contract checks the complete builder, row-name,
 row-validity and caller instruction ranges, plus the reflected layouts and
-frame-counter signature used by the helper. A changed required contract
+frame-counter signature used by the helper. The appearance repair also checks
+the humanoid initializer, animal coat writer and humanoid appearance reader,
+plus the AI stub and humanoid definition layouts. A changed required contract
 disables replacement while retaining Lua population adjustment. These checks
 do not impose a whole-file hash, version or storefront restriction.
+
+`AppearanceRepair.hpp` handles the saved field shared by animal coat variants
+and human appearance IDs. The native initializer hook is restricted to the
+normal bandit definition and the original supported wildlife row names. It
+clears a nonzero animal value only while the human appearance row is unset,
+then invokes normal game initialization once. Initialized human appearances,
+ordinary bandits, shared assets, inventory and unrelated save fields are retained.
+The hook adds no polling or world scans.
 
 The prototype exposes independent boar-to-bandit and wolf-to-bandit replacement at 0 or 100 only. `WildlifeDefinitions.hpp` lists exact supported stock definitions, including brown, white and astral wolves. The Lua population matcher uses the same definitions.
 `ReplacementPolicy.hpp` contains the planned percentage/outcome selection

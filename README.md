@@ -35,7 +35,7 @@ Only wildlife entries with random spawn locations, an encounter role and next-da
 
 Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to change it while playing. Without the menu, close the game and set `debugLogging = 1` under `[LessWildlife]` in the mod's `settings.ini`. The file is created on the first launch and is not bundled in the archive.
 
-Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify changed encounter rows, their species, reasons for retaining wildlife, and rolled-back changes. A changed-row message records the table conversion, not confirmation that an actor spawned. Skip examples are limited to two per reason per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
+Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify changed encounter rows, their species, reasons for retaining wildlife, and rolled-back changes. Appearance messages count inherited animal coat values cleared before normal bandit appearance initialization. A changed-row message records the table conversion, not confirmation that an actor spawned. Skip examples are limited to two per reason per session, and appearance-repair examples to two per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
 
 ## Credits
 

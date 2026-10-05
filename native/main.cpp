@@ -1,6 +1,7 @@
 #include "ReplacementPolicy.hpp"
 #include "Transaction.hpp"
 #include "WildlifeDefinitions.hpp"
+#include "AppearanceRepair.hpp"
 #include <Mod/CppUserModBase.hpp>
 #include <LuaMadeSimple/LuaMadeSimple.hpp>
 #include <DynamicOutput/Output.hpp>
@@ -26,6 +27,9 @@ constexpr wchar_t bandit[] = L"/Game/_Dawnwalker/Combat/Enemies/HumanEnemies/Ban
 using Builder = void(*)(UObject*);
 Builder original{};
 void* target{};
+using AppearanceInitializer = void(*)(UObject*, UObject*);
+AppearanceInitializer originalAppearance{};
+void* appearanceTarget{};
 std::atomic_uint replacementMask{};
 std::atomic_bool logging{}, active{}, failed{};
 std::atomic_uint warningCount{};
@@ -76,7 +80,7 @@ struct TypeRef {
             && (!serial || serial == slot->GetSerialNumber());
     }
 };
-std::array<TypeRef, 6> types;
+std::array<TypeRef, 8> types;
 std::atomic_bool listening{};
 struct Listener final : FUObjectDeleteListener {
     void NotifyUObjectDeleted(const UObjectBase*, int32_t index) override {
@@ -110,6 +114,10 @@ FBoolProperty* hostileProperty{};
 UStruct* entryType{};
 UStruct* rowType{};
 UClass* areaType{};
+UClass* stubType{};
+UClass* humanoidType{};
+FBoolProperty* randomAppearanceProperty{};
+FName banditClassName;
 
 void bindSchema() {
     auto find = [](const wchar_t* path) { return UObjectGlobals::StaticFindObject<UObject*>(nullptr, nullptr, path); };
@@ -123,6 +131,14 @@ void bindSchema() {
     require(clockFunction->GetParmsSize() == 8, "frame counter parameters changed");
     field(clockFunction, L"ReturnValue", 0, 8, L"Int64Property");
     types[5].bind(find(L"/Script/CoreUObject.SoftObjectPath"));
+    types[6].bind(find(L"/Script/DogwoodAI.DogwoodAIStub"));
+    types[7].bind(find(L"/Script/Dawnwalker.HumanoidNPCDefinition"));
+    stubType = static_cast<UClass*>(types[6].object);
+    humanoidType = static_cast<UClass*>(types[7].object);
+    require(stubType->GetPropertiesSize() == 0x270, "AI stub layout changed");
+    randomAppearanceProperty = static_cast<FBoolProperty*>(field(humanoidType, L"bRandomizeAppearance", 0x4f8, 1, L"BoolProperty"));
+    field(humanoidType, L"RandomizedAppearanceTable", 0x508, 8, L"ObjectProperty");
+    banditClassName = FName(L"NPCDef_BanditBasic_Normal_C");
     auto softType = static_cast<UStruct*>(types[5].object);
     require(softType->GetPropertiesSize() == 32, "soft reference path size changed");
     field(softType, L"AssetPath", 0, 16, L"StructProperty");
@@ -317,9 +333,51 @@ void builder(UObject* area) {
     }
 }
 
+struct AppearanceStats { uint64_t checked{}, repaired{}, micros{}, maximum{}, reported{}; } appearanceStats;
+void initializeAppearance(UObject* definition, UObject* stub) {
+    bool repaired = false, measured = false;
+    auto started = std::chrono::steady_clock::time_point{};
+    try {
+        if (active && GetCurrentThreadId() == gameThread && definition && stub
+            && types[6].valid() && types[7].valid()
+            && definition->IsA(humanoidType) && stub->IsA(stubType)
+            && definition->GetClassPrivate()->GetFName() == banditClassName
+            && definition->GetClassPrivate()->GetPathName() == bandit
+            && randomAppearanceProperty->GetPropertyValue(reinterpret_cast<unsigned char*>(definition) + 0x4f8)) {
+            const auto name = stub->GetFName();
+            const auto row = FName(name.GetComparisonIndex().ToUnstableInt(), 0).ToString();
+            if (wildlifeRow(row)) {
+                measured = logging;
+                if (measured) { started = std::chrono::steady_clock::now(); ++appearanceStats.checked; }
+                // Runs before the normal humanoid initializer, including saved
+                // encounters. No actor, CDO, shared appearance or inventory is
+                // replaced. The engine chooses and persists the bandit preset.
+                repaired = clearAnimalAppearance(read<void*>(stub, 0x38));
+            }
+        }
+    } catch (const std::exception&) {
+        if (logging) warning(L"Could not check a replacement appearance; normal initialization retained.");
+    }
+    if (measured) {
+        const auto us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
+        appearanceStats.micros += us; appearanceStats.maximum = std::max(appearanceStats.maximum, us);
+        if (repaired) ++appearanceStats.repaired;
+    }
+    originalAppearance(definition, stub);
+    if (measured && logging) {
+        if (repaired && appearanceStats.repaired <= 2) message(L"Discarded an animal coat variant before normal bandit appearance initialization.");
+        const auto now = GetTickCount64();
+        if (now - appearanceStats.reported >= 10000) {
+            appearanceStats.reported = now;
+            message(L"Appearance checks=" + std::to_wstring(appearanceStats.checked) + L", animal records cleared=" + std::to_wstring(appearanceStats.repaired)
+                + L", repair us=" + std::to_wstring(appearanceStats.micros) + L", max repair us=" + std::to_wstring(appearanceStats.maximum));
+        }
+    }
+}
+
 bool start() {
     if (active) return true;
-    if (target || failed) return false;
+    if (target || appearanceTarget || failed) return false;
     try {
         bindSchema();
         std::wstring reason;
@@ -327,14 +385,22 @@ bool start() {
         if (!candidate) { message(L"Replacement unavailable: " + reason); return false; }
         auto status = MH_Initialize();
         require(status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED, "MinHook initialization failed");
+        auto appearanceCandidate = NativeContract::appearanceInitializer();
+        require(MH_CreateHook(appearanceCandidate, reinterpret_cast<void*>(&initializeAppearance), reinterpret_cast<void**>(&originalAppearance)) == MH_OK, "appearance initializer hook creation failed");
+        appearanceTarget = appearanceCandidate;
         require(MH_CreateHook(candidate, reinterpret_cast<void*>(&builder), reinterpret_cast<void**>(&original)) == MH_OK, "population builder hook creation failed");
         target = candidate; gameThread = GetCurrentThreadId();
         if (!listening.exchange(true)) FUObjectArray::AddUObjectDeleteListener(&listener);
         active = true;
-        if (MH_EnableHook(target) != MH_OK) { active = false; MH_RemoveHook(target); target = nullptr; throw std::runtime_error("population builder hook activation failed"); }
+        require(MH_EnableHook(appearanceTarget) == MH_OK, "appearance initializer hook activation failed");
+        require(MH_EnableHook(target) == MH_OK, "population builder hook activation failed");
         if (logging) message(L"Boar/wolf-to-bandit prototype ready; in-game spawn/save/respawn gate pending.");
         return true;
     } catch (const std::exception& error) {
+        active = false;
+        if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
+        if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
+        if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);
         if (warningCount.fetch_add(1) < 8) { std::string s(error.what()); message(L"Replacement unavailable: " + std::wstring(s.begin(), s.end())); }
         return false;
     }
@@ -342,6 +408,7 @@ bool start() {
 void stop() {
     active = false;
     if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
+    if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
     if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);
     // Other UE4SS mods can share MinHook. Do not uninitialize their hooks.
 }
