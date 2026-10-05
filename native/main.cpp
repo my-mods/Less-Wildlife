@@ -28,13 +28,27 @@ void* target{};
 std::atomic_bool enabled{}, logging{}, active{}, failed{};
 std::atomic_uint warningCount{};
 DWORD gameThread{};
-struct Stats { uint64_t builders{}, transformed{}, skipped{}, rolledBack{}, micros{}, maximum{}, reported{}; } stats;
+enum class SkipReason { None, Conditions, Scripted, Overrides, Table, Budget, Count };
+struct Stats {
+    uint64_t builders{}, wolves{}, nonWolf{}, cached{}, transformed{}, skipped{}, rolledBack{}, micros{}, maximum{}, reported{};
+    std::array<uint64_t, static_cast<size_t>(SkipReason::Count)> reasons{};
+} stats;
 int64_t workFrame = -1; unsigned workEntries{}; uint64_t workMicros{};
 UObject* clockOwner{}; UFunction* clockFunction{};
 
 void message(const std::wstring& value) { RC::Output::send(L"[Less Wildlife native] " + value + L"\n"); }
 void warning(const wchar_t* value) { if (warningCount.fetch_add(1) < 8) message(value); }
 void require(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
+void skip(UObject* area, SkipReason reason) {
+    if (!logging) return;
+    ++stats.skipped;
+    auto count = ++stats.reasons[static_cast<size_t>(reason)];
+    // Only two examples per reason per session; counters retain the totals.
+    if (count > 2 || reason == SkipReason::Budget) return;
+    constexpr const wchar_t* labels[] = {L"none", L"start conditions", L"scripted role/spawn points or no next-day respawn",
+        L"authored AI or population extension", L"generated table unavailable", L"work budget"};
+    message(L"Wolf encounter retained: " + area->GetFullName() + L"; reason=" + labels[static_cast<size_t>(reason)]);
+}
 template<class T> T read(const void* data, size_t offset) {
     T value; std::memcpy(&value, static_cast<const unsigned char*>(data) + offset, sizeof(T)); return value;
 }
@@ -120,8 +134,6 @@ void bindSchema() {
     field(areaType, L"StartConditions", 0x350, 16, L"ArrayProperty");
     field(areaType, L"ActiveEntries", 0x360, 16, L"ArrayProperty");
     field(areaType, L"GeneratedDataTable", 0x370, 8, L"ObjectProperty");
-    field(areaType, L"bUseAttachedGuardArea", 0x330, 1, L"BoolProperty");
-    field(areaType, L"GuardArea", 0x334, 8, L"WeakObjectProperty");
     field(entryType, L"PawnDefinition", 0, 40, L"SoftClassProperty");
     field(entryType, L"AIDefinition", 0x28, 8, L"ClassProperty");
     field(entryType, L"AIReactions", 0x30, 8, L"ClassProperty");
@@ -156,18 +168,13 @@ std::wstring softPath(const void* value) {
 bool emptyTags(const void* value) {
     return read<int32_t>(value, 8) == 0 && read<int32_t>(value, 24) == 0;
 }
-bool noGuardArea(const void* area) {
-    // Inspect the validated weak-reference storage without constructing a
-    // wrapper or resolving an object. Both engine null representations have
-    // a zero serial; retain any authored, stale or malformed reference.
-    const auto index = read<int32_t>(area, 0x334), serial = read<int32_t>(area, 0x338);
-    return (index == 0 || index == -1) && serial == 0;
-}
-bool ambient(const void* entry) {
-    return read<uint8_t>(entry, 0x62) == 3 && read<uint8_t>(entry, 0x63) == 1
-        && read<uint8_t>(entry, 0x64) == 0 && read<uint64_t>(entry, 0xc8) == 0
-        && read<uint64_t>(entry, 0x28) == 0 && read<uint64_t>(entry, 0x30) == 0
-        && read<uint64_t>(entry, 0x38) == 0 && emptyTags(static_cast<const unsigned char*>(entry) + 0x40);
+SkipReason entryReason(const void* entry) {
+    if (read<uint8_t>(entry, 0x62) != 3 || read<uint8_t>(entry, 0x63) != 1 || read<uint8_t>(entry, 0x64) != 0)
+        return SkipReason::Scripted;
+    if (read<uint64_t>(entry, 0xc8) || read<uint64_t>(entry, 0x28) || read<uint64_t>(entry, 0x30)
+        || read<uint64_t>(entry, 0x38) || !emptyTags(static_cast<const unsigned char*>(entry) + 0x40))
+        return SkipReason::Overrides;
+    return SkipReason::None;
 }
 struct Value {
     FProperty* property; void* data;
@@ -204,16 +211,20 @@ struct OperationList {
 void transform(UObject* area) {
     for (const auto& type : types) require(type.valid(), "population metadata expired");
     require(area && area->IsA(areaType), "builder owner is not a population area");
-    auto conditions = read<Array>(area, 0x350);
-    if (!arrayValid(conditions, 64) || conditions.count || read<uint8_t>(area, 0x330)
-        || !noGuardArea(area)) { if (logging) ++stats.skipped; return; }
     auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x360);
     require(arrayValid(entries, 64) && arrayValid(activeEntries, 64), "population entry limit or layout");
     bool hasWolf = false;
     for (int i = 0; i < entries.count; ++i) if (softPath(entries.data + i * 0x100) == wolf) { hasWolf = true; break; }
-    if (!hasWolf) return;
+    if (!hasWolf) { if (logging) ++stats.nonWolf; return; }
+    if (logging) ++stats.wolves;
+    auto conditions = read<Array>(area, 0x350);
+    require(arrayValid(conditions, 64), "population start condition layout");
+    if (conditions.count) { skip(area, SkipReason::Conditions); return; }
+    // Guard areas also bound ordinary roaming packs. Preserve the game's
+    // boundary and registration data; attached scripted spawn points are
+    // excluded by the entry behavior/role/respawn checks below.
     auto table = read<UDataTable*>(area, 0x370);
-    if (!table || table->GetRowStruct() != rowType) { if (logging) ++stats.skipped; return; }
+    if (!table || table->GetRowStruct() != rowType) { skip(area, SkipReason::Table); return; }
     auto& rows = table->GetRowMap();
     require(rows.Num() == activeEntries.count && rows.Num() <= 64 && rows.GetMaxIndex() <= 64, "generated row mapping changed");
     Value replacement(definitionProperty);
@@ -235,7 +246,9 @@ void transform(UObject* area) {
         if (softPath(source) != wolf) continue;
         // One decision covers every wolf row. An ineligible member prevents a
         // partial conversion of a pack; other species are never changed.
-        if (!ambient(source) || !ambient(current)) { if (logging) ++stats.skipped; return; }
+        auto reason = entryReason(source);
+        if (reason == SkipReason::None) reason = entryReason(current);
+        if (reason != SkipReason::None) { skip(area, reason); return; }
         require(softPath(row + 0x30) == wolf && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
                 "generated wolf row changed externally");
         require(read<uint64_t>(row, 0x10) == 0 && read<uint64_t>(row, 0x58) == 0 && read<uint64_t>(row, 0x60) == 0
@@ -258,7 +271,8 @@ void builder(UObject* area) {
     const bool participate = active && enabled && !failed && GetCurrentThreadId() == gameThread;
     auto prior = participate && area ? read<UObject*>(area, 0x370) : nullptr;
     original(area);
-    if (!participate || prior) return;
+    if (!participate) return;
+    if (prior) { if (logging) ++stats.cached; return; }
     auto started = std::chrono::steady_clock::now();
     if (logging) ++stats.builders;
     try {
@@ -267,7 +281,7 @@ void builder(UObject* area) {
         require(frame >= 0, "invalid frame counter");
         if (frame != workFrame) { workFrame = frame; workEntries = 0; workMicros = 0; }
         auto count = read<Array>(area, 0x340).count;
-        if (count < 0 || count > 64 || workEntries + count > 128 || workMicros >= 2000) { if (logging) ++stats.skipped; return; }
+        if (count < 0 || count > 64 || workEntries + count > 128 || workMicros >= 2000) { skip(area, SkipReason::Budget); return; }
         workEntries += count;
         transform(area);
     }
@@ -284,6 +298,13 @@ void builder(UObject* area) {
             stats.reported = now;
             message(L"Prototype totals: new tables=" + std::to_wstring(stats.builders) + L", replaced=" + std::to_wstring(stats.transformed)
                 + L", skipped=" + std::to_wstring(stats.skipped) + L", rollback=" + std::to_wstring(stats.rolledBack)
+                + L", wolf tables=" + std::to_wstring(stats.wolves) + L", other tables=" + std::to_wstring(stats.nonWolf)
+                + L", cached=" + std::to_wstring(stats.cached)
+                + L", conditions=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Conditions)])
+                + L", scripted=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Scripted)])
+                + L", overrides=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Overrides)])
+                + L", table unavailable=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Table)])
+                + L", budget=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Budget)])
                 + L", total us=" + std::to_wstring(stats.micros) + L", max us=" + std::to_wstring(stats.maximum));
         }
     }

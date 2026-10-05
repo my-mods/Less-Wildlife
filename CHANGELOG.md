@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix wolf replacement being unavailable at startup even when Wolves to bandits is On.
+- Allow ordinary roaming wolf packs with existing territory boundaries to be replaced.
 - Add optional wolf-to-bandit encounters, retaining the selected pack size.
 - Add missing settings on startup and consolidate duplicate keys so existing configurations remain editable in Mod Settings.
 - Expand Population to 10–200%, with 100% as the normal population and new default.

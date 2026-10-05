@@ -29,13 +29,13 @@ Without the menu, close the game and set `populationPercent = 100` to your chose
 
 Set Wolves to bandits to On and Apply before entering a new population area. Already generated encounters are left alone. This switch is independent of Adjust wolves: that setting controls quantity, while Wolves to bandits controls the encounter type. The prototype accepts only Off or On, represented by `wolfReplacementChance = 0` or `100` in `settings.ini`.
 
-Only ordinary wolf entries with random spawn locations, an encounter role and next-day respawning are eligible. Entries with authored AI overrides, start conditions or attached guard areas are left alone. Bandits use their normal equipment, AI and loot; existing animals are not destroyed and replaced after spawning.
+Only ordinary wolf entries with random spawn locations, an encounter role and next-day respawning are eligible. Entries with authored AI overrides, start conditions or fixed scripted spawn points are left alone. Ordinary packs retain their existing roaming boundaries. Bandits use their normal equipment, AI and loot; existing animals are not destroyed and replaced after spawning.
 
 ## Logging
 
 Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to change it while playing. Without the menu, close the game and set `debugLogging = 1` under `[LessWildlife]` in the mod's `settings.ini`. The file is created on the first launch and is not bundled in the archive.
 
-Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify converted encounters and skipped or rolled-back changes. Summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
+Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify converted encounters, reasons for retaining wolves, and rolled-back changes. Skip examples are limited to two per reason per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
 
 ## Credits
 
