@@ -1,1 +1,1 @@
-Configurable ordinary boar and wolf populations, plus optional wolf-to-bandit encounters that retain the selected pack size. Population defaults to 100%; wolf replacement defaults to Off.
+Configurable boar and wolf populations, plus independent boar-to-bandit and wolf-to-bandit replacements that retain the selected group size. Includes brown, white and astral wolf variants. Population defaults to 100%; replacements default to Off.

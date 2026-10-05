@@ -4,7 +4,8 @@
 
 - Fix wolf replacement being unavailable at startup even when Wolves to bandits is On.
 - Allow ordinary roaming wolf packs with existing territory boundaries to be replaced.
-- Add optional wolf-to-bandit encounters, retaining the selected pack size.
+- Add independent Boars to bandits and Wolves to bandits switches, retaining the selected group size.
+- Include brown, white and astral wolf variants in population adjustment and eligible bandit replacements.
 - Add missing settings on startup and consolidate duplicate keys so existing configurations remain editable in Mod Settings.
 - Expand Population to 10–200%, with 100% as the normal population and new default.
 - Allow positive populations of one animal to grow to two at 200%.

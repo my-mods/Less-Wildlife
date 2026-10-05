@@ -4,9 +4,9 @@
 
 Sets ordinary wild-boar herds and wolf packs to a configurable percentage of their original size. Choose from 10% to 200%: 100% is the normal population and the default, while 200% doubles it. Quantities are rounded to the nearest animal, with at least one animal wherever the original population was positive. Quest and named variants, other creatures, health and damage keep their normal values.
 
-The optional Wolves to bandits setting replaces eligible newly generated ordinary wolf packs with bandits. It defaults to Off and keeps the pack size selected by Population. The first replacement prototype provides this single replacement; boars retain their population adjustment controls.
+The optional Boars to bandits and Wolves to bandits settings independently replace eligible newly generated herds and packs with bandits. Both default to Off and keep the group size selected by Population. Supported wolves include brown, white and astral variants; quest-specific, boss and summoned definitions are excluded.
 
-One shared population hook handles animal counts. A native helper changes wolf encounter definitions before registration, keeping the original encounter row IDs, quantities and respawn policy. There are no background population scans. Unusually large areas or dense bursts retain their current values.
+One shared population hook handles animal counts. A native helper changes eligible wildlife encounter definitions before registration, keeping the original encounter row IDs, quantities and respawn policy. There are no background population scans. Unusually large areas or dense bursts retain their current values.
 
 ## Requirements
 
@@ -25,17 +25,17 @@ Use Mod Settings > Less Wildlife > Population and Apply. Population ranges from 
 
 Without the menu, close the game and set `populationPercent = 100` to your chosen integer from 10 to 200 under `[LessWildlife]` in the mod's `settings.ini`. Set `reduceBoars = 0` or `reduceWolves = 0` to turn off scaling for that species, or `1` to turn it on. Missing settings are added on startup. Existing valid preferences, comments and unrelated sections are retained; repeated known settings are consolidated using the last valid value. Older percentages from 1 to 9 become 10 so the menu can open them. The file is created on first launch and is not bundled in the archive.
 
-## Wolf replacement
+## Boar and wolf replacement
 
-Set Wolves to bandits to On and Apply before entering a new population area. Already generated encounters are left alone. This switch is independent of Adjust wolves: that setting controls quantity, while Wolves to bandits controls the encounter type. The prototype accepts only Off or On, represented by `wolfReplacementChance = 0` or `100` in `settings.ini`.
+Set Boars to bandits, Wolves to bandits, or both to On and Apply before entering a new population area. Already generated encounters are left alone. These switches are independent of Adjust boars and Adjust wolves, which control quantity. The replacement switches accept only Off or On, represented by `boarReplacementChance = 0` or `100` and `wolfReplacementChance = 0` or `100` in `settings.ini`. Enabling both replaces every eligible new boar herd and wolf pack with bandits. Other replacement outcomes and random percentages are not available yet.
 
-Only ordinary wolf entries with random spawn locations, an encounter role and next-day respawning are eligible. Entries with authored AI overrides, start conditions or fixed scripted spawn points are left alone. Ordinary packs retain their existing roaming boundaries. Bandits use their normal equipment, AI and loot; existing animals are not destroyed and replaced after spawning.
+Only wildlife entries with random spawn locations, an encounter role and next-day respawning are eligible. Quest-controlled encounters, entries with authored AI overrides or start conditions, and fixed scripted spawn points are left alone. Herds and packs retain their existing roaming boundaries. Bandits use their normal equipment, AI and loot; existing animals are not destroyed and replaced after spawning.
 
 ## Logging
 
 Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to change it while playing. Without the menu, close the game and set `debugLogging = 1` under `[LessWildlife]` in the mod's `settings.ini`. The file is created on the first launch and is not bundled in the archive.
 
-Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify converted encounters, reasons for retaining wolves, and rolled-back changes. Skip examples are limited to two per reason per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
+Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify changed encounter rows, their species, reasons for retaining wildlife, and rolled-back changes. A changed-row message records the table conversion, not confirmation that an actor spawned. Skip examples are limited to two per reason per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
 
 ## Credits
 

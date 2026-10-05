@@ -1,1 +1,1 @@
-Adjust ordinary boar and wolf populations from 10% to 200%, with independent species switches and optional wolf-to-bandit encounters. Replacement defaults to Off. Configure through Mod Settings.
+Adjust boar and wolf populations from 10% to 200%, including brown, white and astral wolves. Independently replace eligible herds and packs with bandits through Mod Settings. Replacement defaults to Off.

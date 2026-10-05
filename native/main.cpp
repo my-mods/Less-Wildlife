@@ -1,5 +1,6 @@
 #include "ReplacementPolicy.hpp"
 #include "Transaction.hpp"
+#include "WildlifeDefinitions.hpp"
 #include <Mod/CppUserModBase.hpp>
 #include <LuaMadeSimple/LuaMadeSimple.hpp>
 #include <DynamicOutput/Output.hpp>
@@ -25,12 +26,13 @@ constexpr wchar_t bandit[] = L"/Game/_Dawnwalker/Combat/Enemies/HumanEnemies/Ban
 using Builder = void(*)(UObject*);
 Builder original{};
 void* target{};
-std::atomic_bool enabled{}, logging{}, active{}, failed{};
+std::atomic_uint replacementMask{};
+std::atomic_bool logging{}, active{}, failed{};
 std::atomic_uint warningCount{};
 DWORD gameThread{};
 enum class SkipReason { None, Conditions, Scripted, Overrides, Table, Budget, Count };
 struct Stats {
-    uint64_t builders{}, wolves{}, nonWolf{}, cached{}, transformed{}, skipped{}, rolledBack{}, micros{}, maximum{}, reported{};
+    uint64_t builders{}, wildlife{}, nonWildlife{}, cached{}, transformed{}, skipped{}, rolledBack{}, micros{}, maximum{}, reported{};
     std::array<uint64_t, static_cast<size_t>(SkipReason::Count)> reasons{};
 } stats;
 int64_t workFrame = -1; unsigned workEntries{}; uint64_t workMicros{};
@@ -47,7 +49,7 @@ void skip(UObject* area, SkipReason reason) {
     if (count > 2 || reason == SkipReason::Budget) return;
     constexpr const wchar_t* labels[] = {L"none", L"start conditions", L"scripted role/spawn points or no next-day respawn",
         L"authored AI or population extension", L"generated table unavailable", L"work budget"};
-    message(L"Wolf encounter retained: " + area->GetFullName() + L"; reason=" + labels[static_cast<size_t>(reason)]);
+    message(L"Wildlife encounter retained: " + area->GetFullName() + L"; reason=" + labels[static_cast<size_t>(reason)]);
 }
 template<class T> T read(const void* data, size_t offset) {
     T value; std::memcpy(&value, static_cast<const unsigned char*>(data) + offset, sizeof(T)); return value;
@@ -198,7 +200,7 @@ struct Operation {
         definitionProperty->CopyCompleteValue(destination, backup.data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, wasHostile);
     }
-    bool restored() { return softPath(destination) == wolf && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile; }
+    bool restored() { return softPath(destination) == softPath(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile; }
 };
 // Stable addresses and RAII engine values; no borrowed row survives this call.
 struct OperationList {
@@ -213,10 +215,12 @@ void transform(UObject* area) {
     require(area && area->IsA(areaType), "builder owner is not a population area");
     auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x360);
     require(arrayValid(entries, 64) && arrayValid(activeEntries, 64), "population entry limit or layout");
-    bool hasWolf = false;
-    for (int i = 0; i < entries.count; ++i) if (softPath(entries.data + i * 0x100) == wolf) { hasWolf = true; break; }
-    if (!hasWolf) { if (logging) ++stats.nonWolf; return; }
-    if (logging) ++stats.wolves;
+    const auto settings = replacementMask.load();
+    auto selected = [settings](const std::wstring& path) { return (settings & static_cast<unsigned>(speciesOf(path))) != 0; };
+    bool hasWildlife = false;
+    for (int i = 0; i < entries.count; ++i) if (selected(softPath(entries.data + i * 0x100))) { hasWildlife = true; break; }
+    if (!hasWildlife) { if (logging) ++stats.nonWildlife; return; }
+    if (logging) ++stats.wildlife;
     auto conditions = read<Array>(area, 0x350);
     require(arrayValid(conditions, 64), "population start condition layout");
     if (conditions.count) { skip(area, SkipReason::Conditions); return; }
@@ -231,7 +235,7 @@ void transform(UObject* area) {
     auto end = definitionProperty->ImportText_Direct(bandit, replacement.data, area, 0, nullptr);
     require(end && !*end && softPath(replacement.data) == bandit, "bandit soft reference import failed");
     OperationList operations;
-    unsigned ordinal = 0;
+    unsigned ordinal = 0, boarRows = 0, wolfRows = 0;
     for (auto& pair : rows) {
         auto row = pair.Value;
         auto current = activeEntries.data + ordinal++ * 0x100;
@@ -242,18 +246,20 @@ void transform(UObject* area) {
         for (size_t j = 0; j < separator; ++j) { require(key[j] >= L'0' && key[j] <= L'9', "invalid row index"); index = index * 10 + key[j] - L'0'; }
         require(index < static_cast<unsigned>(entries.count), "population source row index outside entries");
         auto source = entries.data + index * 0x100;
-        require(softPath(current) == softPath(source), "active/source row mapping mismatch");
-        if (softPath(source) != wolf) continue;
-        // One decision covers every wolf row. An ineligible member prevents a
-        // partial conversion of a pack; other species are never changed.
+        auto sourcePath = softPath(source);
+        require(softPath(current) == sourcePath, "active/source row mapping mismatch");
+        if (!selected(sourcePath)) continue;
+        // Plan every selected row before writes so an ineligible member cannot
+        // leave a partially converted encounter. Disabled species stay intact.
         auto reason = entryReason(source);
         if (reason == SkipReason::None) reason = entryReason(current);
         if (reason != SkipReason::None) { skip(area, reason); return; }
-        require(softPath(row + 0x30) == wolf && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
-                "generated wolf row changed externally");
+        require(softPath(row + 0x30) == sourcePath && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
+                "generated wildlife row changed externally");
         require(read<uint64_t>(row, 0x10) == 0 && read<uint64_t>(row, 0x58) == 0 && read<uint64_t>(row, 0x60) == 0
-                && read<uint64_t>(row, 0x68) == 0 && emptyTags(row + 0x70), "authored wolf AI overrides need explicit handling");
+                && read<uint64_t>(row, 0x68) == 0 && emptyTags(row + 0x70), "authored wildlife AI overrides need explicit handling");
         operations.values.push_back(std::make_unique<Operation>(row, current, replacement));
+        if (speciesOf(sourcePath) == Species::Boar) ++boarRows; else ++wolfRows;
     }
     if (operations.values.empty()) return;
     auto result = commit(operations);
@@ -261,14 +267,15 @@ void transform(UObject* area) {
     else if (result == TransactionResult::RolledBack) { if (logging) ++stats.rolledBack; warning(L"Replacement rolled back; original encounter retained."); }
     else {
         if (logging) ++stats.transformed;
-        if (logging) message(L"Prototype wolf -> bandit: " + area->GetFullName() + L"; rows=" + std::to_wstring(operations.values.size()) + L"; original row keys/counts/respawn retained.");
+        if (logging) message(L"Prototype wildlife -> bandit: " + area->GetFullName() + L"; boar rows=" + std::to_wstring(boarRows)
+            + L", wolf rows=" + std::to_wstring(wolfRows) + L"; original row keys/counts/respawn retained.");
     }
 }
 
 void builder(UObject* area) {
     // Always run the game's builder exactly once. It also handles its cached
     // table. Never change an already registered/cached encounter in this gate.
-    const bool participate = active && enabled && !failed && GetCurrentThreadId() == gameThread;
+    const bool participate = active && replacementMask.load() != 0 && !failed && GetCurrentThreadId() == gameThread;
     auto prior = participate && area ? read<UObject*>(area, 0x370) : nullptr;
     original(area);
     if (!participate) return;
@@ -298,7 +305,7 @@ void builder(UObject* area) {
             stats.reported = now;
             message(L"Prototype totals: new tables=" + std::to_wstring(stats.builders) + L", replaced=" + std::to_wstring(stats.transformed)
                 + L", skipped=" + std::to_wstring(stats.skipped) + L", rollback=" + std::to_wstring(stats.rolledBack)
-                + L", wolf tables=" + std::to_wstring(stats.wolves) + L", other tables=" + std::to_wstring(stats.nonWolf)
+                + L", wildlife tables=" + std::to_wstring(stats.wildlife) + L", other tables=" + std::to_wstring(stats.nonWildlife)
                 + L", cached=" + std::to_wstring(stats.cached)
                 + L", conditions=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Conditions)])
                 + L", scripted=" + std::to_wstring(stats.reasons[static_cast<size_t>(SkipReason::Scripted)])
@@ -325,7 +332,7 @@ bool start() {
         if (!listening.exchange(true)) FUObjectArray::AddUObjectDeleteListener(&listener);
         active = true;
         if (MH_EnableHook(target) != MH_OK) { active = false; MH_RemoveHook(target); target = nullptr; throw std::runtime_error("population builder hook activation failed"); }
-        if (logging) message(L"Wolf-to-bandit prototype ready; in-game spawn/save/respawn gate pending.");
+        if (logging) message(L"Boar/wolf-to-bandit prototype ready; in-game spawn/save/respawn gate pending.");
         return true;
     } catch (const std::exception& error) {
         if (warningCount.fetch_add(1) < 8) { std::string s(error.what()); message(L"Replacement unavailable: " + std::wstring(s.begin(), s.end())); }
@@ -346,15 +353,16 @@ public:
     LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.0.0"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
-        lua.register_function("_LWConfigurePrototype", [](const auto& l) {
+        lua.register_function("_LWConfigureWildlife", [](const auto& l) {
             // LuaMadeSimple removes each consumed argument; every read is index 1.
-            auto percent = l.get_integer(1); auto logs = l.get_integer(1);
-            LessWildlife::enabled = LessWildlife::prototypeEnabled(percent); LessWildlife::logging = logs == 1; return 0;
+            auto boars = l.get_integer(1); auto wolves = l.get_integer(1); auto logs = l.get_integer(1);
+            LessWildlife::replacementMask = LessWildlife::replacementSettings(boars, wolves);
+            LessWildlife::logging = logs == 1; return 0;
         });
         lua.register_function("_LWStartPrototype", [](const auto& l) { l.set_bool(LessWildlife::start()); return 1; });
     }
     void on_lua_stop(StringViewType name, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
-        if (name == L"LessWildlife") LessWildlife::enabled = false;
+        if (name == L"LessWildlife") LessWildlife::replacementMask = 0;
     }
     ~LessWildlifeMod() override { LessWildlife::stop(); }
 };

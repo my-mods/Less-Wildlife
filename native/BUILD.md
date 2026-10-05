@@ -28,7 +28,7 @@ frame-counter signature used by the helper. A changed required contract
 disables replacement while retaining Lua population adjustment. These checks
 do not impose a whole-file hash, version or storefront restriction.
 
-The first prototype exposes wolf-to-bandit replacement at 0 or 100 only.
+The prototype exposes independent boar-to-bandit and wolf-to-bandit replacement at 0 or 100 only. `WildlifeDefinitions.hpp` lists exact supported stock definitions, including brown, white and astral wolves. The Lua population matcher uses the same definitions.
 `ReplacementPolicy.hpp` contains the planned percentage/outcome selection
-logic; it is not connected to respawn-cycle persistence yet. Other enemies,
-boar replacement and suppression are not enabled in this prototype.
+logic; it is not connected to respawn-cycle persistence yet. Other enemy
+outcomes and suppression are not enabled in this prototype.

@@ -1,15 +1,25 @@
 -- Configurable wildlife population scaling. See LICENSE.txt and UPSTREAM.json.
 local here=assert(debug.getinfo(1,'S').source:gsub('^@',''):match('^(.*[/\\])'))
 local root=here..'../'
-local BOAR='/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_Base.NPCDef_Boar_Base_C'
-local WOLF='/Game/_Dawnwalker/Combat/Enemies/Wolf/NPCDef_Wolf_Base.NPCDef_Wolf_Base_C'
+local species={
+ ['/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_Base.NPCDef_Boar_Base_C']='boar',
+ ['/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_NewAI.NPCDef_Boar_NewAI_C']='boar',
+ ['/Game/_Dawnwalker/NPC/BaseDefinitions/Enemies/NPCDef_Boar.NPCDef_Boar_C']='boar',
+ ['/Game/_Dawnwalker/Combat/Enemies/Wolf/NPCDef_Wolf_Base.NPCDef_Wolf_Base_C']='wolf',
+ ['/Game/_Dawnwalker/Combat/Enemies/Wolf/NewAI/NPCDef_Wolf_NewAI.NPCDef_Wolf_NewAI_C']='wolf',
+ ['/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Wolf/NPCDef_Wolf_White.NPCDef_Wolf_White_C']='wolf',
+ ['/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Wolf/NPCDef_Wolf_Brown.NPCDef_Wolf_Brown_C']='wolf',
+ ['/Game/_Dawnwalker/NPC/BaseDefinitions/Enemies/NPCDef_Wolf.NPCDef_Wolf_C']='wolf',
+ ['/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralWolf/NPCDef_Astral_Wolf_Base.NPCDef_Astral_Wolf_Base_C']='wolf',
+ ['/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/AstralWolf/NPCDef_Astral_Wolf_Dark.NPCDef_Astral_Wolf_Dark_C']='wolf',
+}
 local HOOK='/Script/Population.PopulationArea:OnBeginOverlapOuterBox'
 local MAX_ENTRIES,FRAME_ENTRIES,CACHE_LIMIT=64,128,4096
 local cache,slots,count,prune={}, {},0,1
 local system,frameFn,frame,frameEntries,frameTime
 local debugLogging,populationPercent=false,100
 local reduceBoars,reduceWolves=true,true
-local wolfReplacementChance,settingsReady=0,false
+local boarReplacementChance,wolfReplacementChance,settingsReady=0,0,false
 local stats,lastSummary={},nil
 local function log(s)print('[Less Wildlife] '..s..'\n')end
 local function valid(o)return o~=nil and o:IsValid()==true end
@@ -27,12 +37,12 @@ local function readSettings()
  populationPercent=values.populationPercent
  reduceBoars,reduceWolves=values.reduceBoars==1,values.reduceWolves==1
  debugLogging=values.debugLogging==1
- wolfReplacementChance,settingsReady=values.wolfReplacementChance,ready
+ boarReplacementChance,wolfReplacementChance,settingsReady=values.boarReplacementChance,values.wolfReplacementChance,ready
  if not ready then log('Settings upgrade failed; replacement stays Off: '..tostring(why)) end
 end
 local function configureReplacement()
- if type(_LWConfigurePrototype)=='function' then
-  _LWConfigurePrototype(settingsReady and wolfReplacementChance or 0,debugLogging and 1 or 0)
+ if type(_LWConfigureWildlife)=='function' then
+  _LWConfigureWildlife(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,debugLogging and 1 or 0)
  end
 end
 local function record(key,n)
@@ -53,7 +63,7 @@ local function pathOf(value)
  -- Keep these temporary wrappers within this single callback.
  local id=value:GetObjectID()
  local path=id:GetAssetPathName():ToString()
- if path~=BOAR and path~=WOLF then return end
+ if not species[path] then return end
  if id:GetSubPathString():ToString()~='' then return end
  return path
 end
@@ -139,7 +149,7 @@ local function apply(area)
     end
     if not previous.released then
      -- Recompute from the original population, including after Apply or retry.
-     local enabled=percent~=100 and ((path==BOAR and reduceBoars) or (path==WOLF and reduceWolves))
+     local enabled=percent~=100 and ((species[path]=='boar' and reduceBoars) or (species[path]=='wolf' and reduceWolves))
      local q=enabled and scaled(previous.originalQ,percent) or previous.originalQ
      local m=enabled and math.max(q,scaled(previous.originalM,percent)) or previous.originalM
      if q~=quantity or m~=maximum then pending[#pending+1]={index=i,path=path,q=q,m=m,oldQ=quantity,oldM=maximum} end
@@ -160,7 +170,7 @@ local function apply(area)
     error('herd write failed; restoration attempted')
    end
    local saved=entry.edits[change.index];saved.quantity=change.q;saved.maximum=change.m
-   record(change.path==BOAR and 'boars' or 'wolves')
+   record(species[change.path]=='boar' and 'boars' or 'wolves')
   end
   entry.settingsKey=settingsKey;entry.done=true
  end)
@@ -182,6 +192,7 @@ pcall(function()
   if values.reduceWolves==0 or values.reduceWolves==1 then reduceWolves=values.reduceWolves==1 end
   if values.debugLogging~=nil then debugLogging=values.debugLogging==1 end
   if values.wolfReplacementChance==0 or values.wolfReplacementChance==100 then wolfReplacementChance=values.wolfReplacementChance end
+  if values.boarReplacementChance==0 or values.boarReplacementChance==100 then boarReplacementChance=values.boarReplacementChance end
   configureReplacement()
   stats={};lastSummary=nil
  end)
@@ -196,9 +207,9 @@ initialize=function()
   system=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
   assert(valid(system),'KismetSystemLibrary unavailable')
   frameFn=assert(method(system,'GetFrameCount'),'GetFrameCount unavailable')
-  if type(_LWStartPrototype)=='function' then
+  if type(_LWStartPrototype)=='function' and type(_LWConfigureWildlife)=='function' then
    if not _LWStartPrototype() then log('Native replacement unavailable; population controls remain active.') end
-  elseif wolfReplacementChance~=0 then log('Native replacement helper is missing; population controls remain active.') end
+  elseif boarReplacementChance~=0 or wolfReplacementChance~=0 then log('Native replacement helper is missing or outdated; population controls remain active.') end
   local before,after=RegisterHook(HOOK,function(context)
    record('overlaps')
    local ok=pcall(function()apply(context:get())end)

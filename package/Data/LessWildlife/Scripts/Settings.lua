@@ -1,13 +1,13 @@
 -- File-backed settings shared by startup and the optional Mod Setting Menu.
 local M={}
-M.keys={'populationPercent','reduceBoars','reduceWolves','wolfReplacementChance','debugLogging'}
-M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,wolfReplacementChance=0,debugLogging=0}
+M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','debugLogging'}
+M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,debugLogging=0}
 local function value(key,raw)
  local n=tonumber(raw)
  if not n or n~=n or n%1~=0 then return end
  if key=='populationPercent' then
   if n>=1 and n<=200 then return math.max(10,n) end
- elseif key=='wolfReplacementChance' then
+ elseif key=='boarReplacementChance' or key=='wolfReplacementChance' then
   if n==0 or n==100 then return n end
  elseif n==0 or n==1 then return n end
 end
@@ -123,7 +123,7 @@ function M.load(path,fs)
   local updated;updated,settings=M.upgrade(original)
   if updated~=original then M.replace(path,original,updated,fs) end
  end)
- if not ok then settings.wolfReplacementChance=0 end
+ if not ok then settings.boarReplacementChance=0;settings.wolfReplacementChance=0 end
  return settings,ok,why
 end
 return M
