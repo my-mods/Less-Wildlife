@@ -17,7 +17,7 @@
   "source": "https://github.com/my-mods/Less-Wildlife",
   "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/711",
   "modId": 711,
-  "requirementsMode": "mod-level",
+  "requirementsMode": "file-to-file",
   "file": {
     "name": "Less Wildlife",
     "archive": "Less-Wildlife.zip",
@@ -29,18 +29,11 @@
   },
   "requirements": [
     {
-      "name": "Dawnwalker-compatible UE4SS",
-      "anyOf": [
-        {
-          "name": "UE4SS for Dawnwalker",
-          "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/18"
-        },
-        {
-          "name": "UE4SS for BoD",
-          "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/283"
-        }
-      ],
-      "note": "Install one loader providing native hooks, delayed game-thread callbacks, GetFrameCount and owned soft-reference path methods. These are alternatives, not two required installs."
+      "name": "UE4SS for Dawnwalker by Vercadi",
+      "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/18",
+      "minimumVersion": "1.3",
+      "optional": false,
+      "note": "Required: Vercadi's UE4SS for Dawnwalker, Nexus version 1.3 (RC6) or later."
     },
     {
       "name": "Mod Setting Menu",

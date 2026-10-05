@@ -1,0 +1,16 @@
+{
+  "nexusUrl": "https://www.nexusmods.com/thebloodofdawnwalker/mods/711",
+  "requirementsMode": "file-to-file",
+  "fileVersionId": "41742787152876",
+  "version": "0.0.0",
+  "dependency_definitions": [
+    {
+      "ranges": [
+        {
+          "min_version_id": "41742787151451",
+          "max_version_id": null
+        }
+      ]
+    }
+  ]
+}
