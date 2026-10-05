@@ -74,9 +74,19 @@ struct Listener final : FUObjectDeleteListener {
 
 FProperty* field(UStruct* owner, const wchar_t* name, int offset, int size, const wchar_t* kind) {
     auto property = owner->FindProperty(FName(name));
-    require(property && property->GetOffset_Internal() == offset && property->GetSize() == size,
-            "population field offset or size changed");
-    require(property->GetClass().GetName() == kind, "population field type changed");
+    auto mismatch = [&](const std::wstring& detail) {
+        auto context = owner->GetFullName() + L":" + name + L" " + detail;
+        std::string reason; reason.reserve(context.size());
+        for (auto c : context) reason.push_back(c >= 0 && c <= 127 ? static_cast<char>(c) : '?');
+        throw std::runtime_error(reason);
+    };
+    if (!property) mismatch(L"is missing");
+    const auto actualOffset = property->GetOffset_Internal(), actualSize = property->GetSize();
+    if (actualOffset != offset || actualSize != size)
+        mismatch(L"layout mismatch: expected offset=" + std::to_wstring(offset) + L", size=" + std::to_wstring(size)
+            + L"; found offset=" + std::to_wstring(actualOffset) + L", size=" + std::to_wstring(actualSize));
+    const auto actualKind = property->GetClass().GetName();
+    if (actualKind != kind) mismatch(L"type mismatch: expected " + std::wstring(kind) + L"; found " + actualKind);
     return property;
 }
 FProperty* definitionProperty{};
@@ -111,7 +121,7 @@ void bindSchema() {
     field(areaType, L"ActiveEntries", 0x360, 16, L"ArrayProperty");
     field(areaType, L"GeneratedDataTable", 0x370, 8, L"ObjectProperty");
     field(areaType, L"bUseAttachedGuardArea", 0x330, 1, L"BoolProperty");
-    field(areaType, L"GuardArea", 0x334, 8, L"NameProperty");
+    field(areaType, L"GuardArea", 0x334, 8, L"WeakObjectProperty");
     field(entryType, L"PawnDefinition", 0, 40, L"SoftClassProperty");
     field(entryType, L"AIDefinition", 0x28, 8, L"ClassProperty");
     field(entryType, L"AIReactions", 0x30, 8, L"ClassProperty");
@@ -145,6 +155,13 @@ std::wstring softPath(const void* value) {
 }
 bool emptyTags(const void* value) {
     return read<int32_t>(value, 8) == 0 && read<int32_t>(value, 24) == 0;
+}
+bool noGuardArea(const void* area) {
+    // Inspect the validated weak-reference storage without constructing a
+    // wrapper or resolving an object. Both engine null representations have
+    // a zero serial; retain any authored, stale or malformed reference.
+    const auto index = read<int32_t>(area, 0x334), serial = read<int32_t>(area, 0x338);
+    return (index == 0 || index == -1) && serial == 0;
 }
 bool ambient(const void* entry) {
     return read<uint8_t>(entry, 0x62) == 3 && read<uint8_t>(entry, 0x63) == 1
@@ -189,7 +206,7 @@ void transform(UObject* area) {
     require(area && area->IsA(areaType), "builder owner is not a population area");
     auto conditions = read<Array>(area, 0x350);
     if (!arrayValid(conditions, 64) || conditions.count || read<uint8_t>(area, 0x330)
-        || read<uint64_t>(area, 0x334)) { if (logging) ++stats.skipped; return; }
+        || !noGuardArea(area)) { if (logging) ++stats.skipped; return; }
     auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x360);
     require(arrayValid(entries, 64) && arrayValid(activeEntries, 64), "population entry limit or layout");
     bool hasWolf = false;
