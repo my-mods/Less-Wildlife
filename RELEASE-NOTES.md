@@ -1,5 +1,7 @@
 # Less Wildlife 0.0.0
 
+- Restore missing weapons on replacement bandits and blood guards.
+- Give replacement blood guards their hostile behavior from their first spawn.
 - Fix enemy replacement failing to start and leaving boars and wolves unchanged despite enabled settings.
 - Add separate 0–100% replacement chances for boar herds and wolf packs.
 - Choose Bandits, Blood guards, Vidmo, Kobolds and No spawn independently for each species. Enabled outcomes have equal chances; an empty selection keeps the animals.

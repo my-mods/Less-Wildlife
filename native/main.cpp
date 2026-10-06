@@ -88,7 +88,7 @@ struct TypeRef {
             && (!serial || serial == slot->GetSerialNumber());
     }
 };
-std::array<TypeRef, 19> types;
+std::array<TypeRef, 20> types;
 namespace EncounterRuntime { void invalidateArea(int32_t); }
 TypeRef observerType;
 std::atomic_bool listening{};
@@ -122,6 +122,8 @@ FProperty* field(UStruct* owner, const wchar_t* name, int offset, int size, cons
     return property;
 }
 FProperty* definitionProperty{};
+FProperty* reactionsProperty{};
+FProperty* factionProperty{};
 FArrayProperty* montageProperty{};
 FBoolProperty* hostileProperty{};
 UStruct* entryType{};
@@ -253,16 +255,23 @@ struct Value {
 };
 struct Operation {
     void* destination; void* activeEntry; Value backup; Value montageBackup;
-    const Value* replacement; const Value* emptyMontages; bool wasHostile;
-    Operation(void* row, void* entry, const Value& next, const Value& noMontages)
+    void* reactions; void* faction; Value reactionsBackup; Value factionBackup;
+    const Value* replacement; const Value* emptyMontages; const Value* nextReactions; const Value* nextFaction; bool wasHostile;
+    Operation(void* row, void* entry, const Value& next, const Value& noMontages, const Value& reaction, const Value& affiliation)
         : destination(static_cast<unsigned char*>(row) + 0x30), activeEntry(entry), backup(definitionProperty), montageBackup(montageProperty),
-          replacement(&next), emptyMontages(&noMontages),
+          reactions(static_cast<unsigned char*>(row) + 0x60), faction(static_cast<unsigned char*>(row) + 0x68),
+          reactionsBackup(reactionsProperty), factionBackup(factionProperty),
+          replacement(&next), emptyMontages(&noMontages), nextReactions(&reaction), nextFaction(&affiliation),
           wasHostile(hostileProperty->GetPropertyValue(static_cast<unsigned char*>(entry) + 0x60)) {
         definitionProperty->CopyCompleteValue(backup.data, destination);
+        reactionsProperty->CopyCompleteValue(reactionsBackup.data, reactions);
+        factionProperty->CopyCompleteValue(factionBackup.data, faction);
         montageProperty->CopyCompleteValue(montageBackup.data, static_cast<unsigned char*>(activeEntry) + 0xb0);
     }
     void apply() {
         definitionProperty->CopyCompleteValue(destination, replacement->data);
+        reactionsProperty->CopyCompleteValue(reactions, nextReactions->data);
+        factionProperty->CopyCompleteValue(faction, nextFaction->data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, true);
         // RandomPoints entries can still supply animal sleeping/eating/sitting
         // montages. Their dynamic activity points are built after this callback.
@@ -271,16 +280,20 @@ struct Operation {
     }
     bool readbackMatches() {
         return definitionKey(destination) == definitionKey(replacement->data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60)
-            && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data);
+            && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data)
+            && reactionsProperty->Identical(reactions, nextReactions->data) && factionProperty->Identical(faction, nextFaction->data);
     }
     void restore() {
         definitionProperty->CopyCompleteValue(destination, backup.data);
+        reactionsProperty->CopyCompleteValue(reactions, reactionsBackup.data);
+        factionProperty->CopyCompleteValue(faction, factionBackup.data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, wasHostile);
         montageProperty->CopyCompleteValue(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data);
     }
     bool restored() {
         return definitionKey(destination) == definitionKey(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile
-            && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data);
+            && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data)
+            && reactionsProperty->Identical(reactions, reactionsBackup.data) && factionProperty->Identical(faction, factionBackup.data);
     }
 };
 // Stable addresses and RAII engine values; no borrowed row survives this call.
@@ -292,6 +305,7 @@ struct OperationList {
 };
 
 #include "EncounterRuntime.inl"
+#include "EquipmentRepair.inl"
 
 void transform(UObject* area) {
     for (const auto& type : types) require(type.valid(), "population metadata expired");
@@ -342,8 +356,7 @@ void transform(UObject* area) {
         require((definitionKey(row + 0x30) == sourcePath || std::find(enemyKeys.begin(), enemyKeys.end(), definitionKey(row + 0x30)) != enemyKeys.end())
                 && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
                 "generated wildlife row changed externally");
-        require(read<uint64_t>(row, 0x10) == 0 && read<uint64_t>(row, 0x58) == 0 && read<uint64_t>(row, 0x60) == 0
-                && read<uint64_t>(row, 0x68) == 0 && emptyTags(row + 0x70), "authored wildlife AI overrides need explicit handling");
+        require(read<uint64_t>(row, 0x10) == 0 && EncounterRuntime::ownedProfile(row), "authored wildlife AI overrides need explicit handling");
         auto identity = EncounterRuntime::identify(read<std::array<uint32_t, 4>>(area, 0x1e0), pair.Key);
         require(identity && identity->row == index && wildlifeKeys[identity->definition] == sourcePath, "encounter stable identity mismatch");
         planned[plannedCount++] = {row, current, *identity};
@@ -356,6 +369,7 @@ void transform(UObject* area) {
         DecisionJournal::Slot saved;
         EncounterDecision decision;
         std::unique_ptr<Value> replacement;
+        std::unique_ptr<Value> reactions, faction;
     };
     std::vector<Prepared> prepared; prepared.reserve(plannedCount);
     Value noMontages(montageProperty);
@@ -368,15 +382,17 @@ void transform(UObject* area) {
         if (!saved.decision && definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == banditKey)
             decision = {plan.key, 0, Outcome::Bandit, CyclePhase::Active};
         auto replacement = std::make_unique<Value>(definitionProperty);
+        auto reactions = std::make_unique<Value>(reactionsProperty), faction = std::make_unique<Value>(factionProperty);
         auto end = definitionProperty->ImportText_Direct(EncounterRuntime::path(decision), replacement->data, area, 0, nullptr);
         require(end && !*end && definitionKey(replacement->data) == EncounterRuntime::keyFor(decision), "outcome soft reference import failed");
+        EncounterRuntime::prepareHostility(decision, *reactions, *faction, area);
         if (decision.outcome != Outcome::Original && decision.outcome != Outcome::None) {
             if (pointsBuilt) {
                 require(definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == EncounterRuntime::keyFor(decision),
                     "cached encounter changed before registration");
-            } else operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, noMontages));
+            } else operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, noMontages, *reactions, *faction));
         }
-        prepared.push_back({std::move(saved), decision, std::move(replacement)});
+        prepared.push_back({std::move(saved), decision, std::move(replacement), std::move(reactions), std::move(faction)});
     }
     // Save before registration; no choice is kept in an external/global save.
     for (auto& item : prepared) if (!item.saved.decision) {
@@ -451,7 +467,7 @@ void builder(UObject* area) {
     }
 }
 
-struct AppearanceStats { uint64_t checked{}, repaired{}, micros{}, maximum{}, reported{}; } appearanceStats;
+struct AppearanceStats { uint64_t checked{}, repaired{}, equipment{}, failures{}, micros{}, maximum{}, reported{}; } appearanceStats;
 void initializeAppearance(UObject* definition, UObject* stub) {
     bool repaired = false, measured = false;
     auto started = std::chrono::steady_clock::time_point{};
@@ -466,9 +482,15 @@ void initializeAppearance(UObject* definition, UObject* stub) {
             if (wildlifeRow(row)) {
                 measured = logging;
                 if (measured) { started = std::chrono::steady_clock::now(); ++appearanceStats.checked; }
-                // Runs before the normal humanoid initializer, including saved
-                // encounters. No actor, CDO, shared appearance or inventory is
-                // replaced. The engine chooses and persists the bandit preset.
+                // The normal initializer selects appearance and seeds stock
+                // equipment. Saved animal inventories otherwise skip seeding.
+                try { if (EquipmentRepair::prepare(definition, stub) && measured) ++appearanceStats.equipment; }
+                catch (const std::exception& error) {
+                    if (logging && ++appearanceStats.failures <= 3) {
+                        std::string reason = error.what();
+                        message(L"Replacement equipment retained normal initialization: " + std::wstring(reason.begin(), reason.end()));
+                    }
+                }
                 auto record = read<void*>(stub, 0x38);
                 auto scope = EncounterRuntime::attemptScope;
                 if (record && scope && scope->decision && scope->newCycle && read<void*>(stub, 0xe8) == scope->entry) {
@@ -478,7 +500,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
             }
         }
     } catch (const std::exception&) {
-        if (logging) warning(L"Could not check a replacement appearance; normal initialization retained.");
+        if (logging && ++appearanceStats.failures <= 3) warning(L"Could not validate replacement initialization; normal game processing retained.");
     }
     if (measured) {
         const auto us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
@@ -492,6 +514,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
         if (now - appearanceStats.reported >= 10000) {
             appearanceStats.reported = now;
             message(L"Appearance checks=" + std::to_wstring(appearanceStats.checked) + L", animal records cleared=" + std::to_wstring(appearanceStats.repaired)
+                + L", equipment initialization requested=" + std::to_wstring(appearanceStats.equipment)
                 + L", repair us=" + std::to_wstring(appearanceStats.micros) + L", max repair us=" + std::to_wstring(appearanceStats.maximum));
         }
     }

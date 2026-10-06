@@ -6,8 +6,6 @@ BindActivity originalBind{};
 void* bindTarget{};
 using CompleteStub = void(*)(UObject*);
 std::mt19937 random;
-FProperty* reactionsProperty{};
-FProperty* factionProperty{};
 constexpr wchar_t hostileReactions[] = L"/Game/_Dawnwalker/NPC/BasicNPC/Reactions/AIReactions_Human_Hostile.AIReactions_Human_Hostile_C";
 FName hostileFaction;
 struct GuidHash {
@@ -153,6 +151,15 @@ void bind() {
     types[16].bind(method(factsDefault, L"FactSetInt"));
     types[17].bind(find(L"/Script/Population.PopulationSystemImpl"));
     types[18].bind(find(L"/Script/Population.DynamicActionPoint"));
+    types[19].bind(find(L"/Script/DogwoodInventory.InventorySubsystem"));
+    auto inventory = static_cast<UClass*>(types[19].object);
+    require(inventory->GetPropertiesSize() == 0x4a0, "equipment inventory layout changed");
+    field(inventory, L"LoadedItemMap", 0x188, 0x50, L"MapProperty");
+    auto equipment = static_cast<FMapProperty*>(field(humanoidType, L"EquipmentSlots", 0x2a8, 0x50, L"MapProperty"));
+    auto equipmentKey = equipment->GetKeyProp(), equipmentValue = equipment->GetValueProp();
+    require(equipmentKey && equipmentKey->GetSize() == 1 && equipmentKey->GetClass().GetName() == L"EnumProperty"
+        && equipmentValue && equipmentValue->GetSize() == 8 && equipmentValue->GetClass().GetName() == L"ObjectProperty",
+        "stock equipment element layout changed");
     require(static_cast<UClass*>(types[18].object)->GetPropertiesSize() == 0x440, "dynamic activity point layout changed");
     auto function = [](unsigned index, int size) {
         auto f = static_cast<UFunction*>(types[index].object);
@@ -225,16 +232,29 @@ struct Facts {
     }
 };
 
+bool ownedProfile(const void* row) {
+    auto reaction = read<UClass*>(row, 0x60);
+    return read<uint64_t>(row, 0x58) == 0 && emptyTags(static_cast<const unsigned char*>(row) + 0x70)
+        && (!reaction || reaction->GetPathName() == hostileReactions)
+        && (!read<uint64_t>(row, 0x68) || read<FName>(row, 0x68) == hostileFaction);
+}
+void prepareHostility(const EncounterDecision& decision, Value& reactions, Value& faction, UObject* owner) {
+    if (decision.outcome != Outcome::BloodGuard) return;
+    // Prepare the same full profile before initial registration and respawn.
+    // Keep the guard's stock combat AI, weapons, abilities and appearance.
+    auto end = reactionsProperty->ImportText_Direct(hostileReactions, reactions.data, owner, 0, nullptr);
+    auto type = read<UClass*>(reactions.data, 0);
+    require(end && !*end && type && type->GetPathName() == hostileReactions, "hostile guard reactions unavailable");
+    end = factionProperty->ImportText_Direct(L"(TagName=\"RebelAI.Faction.GlobalBandit\")", faction.data, owner, 0, nullptr);
+    require(end && !*end && read<FName>(faction.data, 0) == hostileFaction, "hostile guard faction unavailable");
+}
 void setDefinition(void* row, const EncounterDecision& decision, UObject* owner) {
     auto destination = static_cast<unsigned char*>(row) + 0x30;
     auto reactions = static_cast<unsigned char*>(row) + 0x60;
     auto faction = static_cast<unsigned char*>(row) + 0x68;
     const auto current = definitionKey(destination);
-    auto priorReaction = read<UClass*>(reactions, 0);
     require((current == wildlifeKeys[decision.key.definition] || std::find(enemyKeys.begin(), enemyKeys.end(), current) != enemyKeys.end())
-        && read<uint64_t>(row, 0x58) == 0 && emptyTags(static_cast<unsigned char*>(row) + 0x70)
-        && (!priorReaction || priorReaction->GetPathName() == hostileReactions)
-        && (!read<uint64_t>(faction, 0) || read<FName>(faction, 0) == hostileFaction), "encounter profile changed externally");
+        && ownedProfile(row), "encounter profile changed externally");
     if (definitionKey(destination) == keyFor(decision)) {
         auto existing = read<UClass*>(reactions, 0);
         if (decision.outcome == Outcome::BloodGuard
@@ -245,17 +265,7 @@ void setDefinition(void* row, const EncounterDecision& decision, UObject* owner)
         previousReactions(reactionsProperty), previousFaction(factionProperty);
     auto end = definitionProperty->ImportText_Direct(path(decision), replacement.data, owner, 0, nullptr);
     require(end && !*end && definitionKey(replacement.data) == keyFor(decision), "enemy soft reference import failed");
-    if (decision.outcome == Outcome::BloodGuard) {
-        // The stock guard uses loyal-neutral reactions and a soldier faction.
-        // These roaming replacements use the stock hostile human reactions and
-        // outlaw faction; their own definition still supplies guard combat AI,
-        // equipment, abilities, appearance and loot.
-        end = reactionsProperty->ImportText_Direct(hostileReactions, nextReactions.data, owner, 0, nullptr);
-        auto type = read<UClass*>(nextReactions.data, 0);
-        require(end && !*end && type && type->GetPathName() == hostileReactions, "hostile guard reactions unavailable");
-        end = factionProperty->ImportText_Direct(L"(TagName=\"RebelAI.Faction.GlobalBandit\")", nextFaction.data, owner, 0, nullptr);
-        require(end && !*end && read<FName>(nextFaction.data, 0) == hostileFaction, "hostile guard faction unavailable");
-    }
+    prepareHostility(decision, nextReactions, nextFaction, owner);
     definitionProperty->CopyCompleteValue(backup.data, destination);
     reactionsProperty->CopyCompleteValue(previousReactions.data, reactions);
     factionProperty->CopyCompleteValue(previousFaction.data, faction);

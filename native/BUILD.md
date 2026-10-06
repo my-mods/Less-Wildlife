@@ -73,6 +73,15 @@ groups' points remain intact. `AppearanceRepair.hpp` handles the field shared by
 animal coats and human appearance IDs. Normal restoration retains a human choice;
 new cycles reset reused fields before normal randomized humanoid initialization.
 
+`EquipmentRepair.inl` runs before that same initializer. For a living, actorless
+saved bandit or blood guard, it checks the stock weapon slot against the saved
+active loadout. A missing weapon requests the game's normal equipment seeding;
+the helper does not write inventory contents. Separate equipment journal records
+include the persistent member ID and mark initialization once per encounter cycle,
+including already armed members. Subsequent loads preserve disarming and looting.
+These records use their own namespace and the reserved word in the checked record;
+the original encounter journal format and namespace remain unchanged.
+
 `NativeContract.hpp`, `RespawnContract.hpp` and `LifecycleContract.hpp` check the
 instruction ranges, call sites and layout-dependent functions actually used.
 Additional reflected field, class, property and native-function checks run at binding.
