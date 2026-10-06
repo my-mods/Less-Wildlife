@@ -42,7 +42,10 @@ Two reserved banks, full-identity decoding, checksums, collision probes and a fi
 head switch protect against partial updates and occupied names. An invalid committed
 record fails validation. No global sidecar chooses outcomes for unrelated saves.
 `EncounterRuntime.inl` obtains FactsDB through reflected game-instance APIs with checked
-function pointers, fields and parameter layouts. This adapter performs no direct save-file IO.
+function pointers, fields and parameter layouts. Quest types belong to `/Script/Quest`.
+Fact methods are resolved by name on the verified FactsDB default object, avoiding
+function-path punctuation assumptions. Missing bindings report their exact identity.
+This adapter performs no direct save-file IO.
 
 Generated row names, group quantities, locations and respawn policies stay intact.
 Definitions and row AI overrides use engine FProperty allocation, import, copy,

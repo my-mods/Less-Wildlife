@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix enemy replacement failing to start and leaving boars and wolves unchanged despite enabled settings.
 - Add separate 0–100% replacement chances for boar herds and wolf packs.
 - Choose Bandits, Blood guards, Vidmo, Kobolds and No spawn independently for each species. Enabled outcomes have equal chances; an empty selection keeps the animals.
 - Keep each group's result through travel and save/load, with a new roll on natural respawn. Settings changes affect subsequent cycles.

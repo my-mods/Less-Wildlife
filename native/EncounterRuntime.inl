@@ -122,16 +122,35 @@ void consumedFresh(const EncounterKey& key) {
     }
 }
 void bind() {
-    auto find = [](const wchar_t* name) { return UObjectGlobals::StaticFindObject<UObject*>(nullptr, nullptr, name); };
+    auto find = [](const wchar_t* name) {
+        auto object = UObjectGlobals::StaticFindObject<UObject*>(nullptr, nullptr, name);
+        if (!object) {
+            std::string error = "required encounter object missing: ";
+            for (const wchar_t c : std::wstring_view(name)) error.push_back(static_cast<char>(c <= 0x7f ? c : L'?'));
+            throw std::runtime_error(error);
+        }
+        return object;
+    };
+    auto method = [](UObject* owner, const wchar_t* name) {
+        auto function = owner->GetFunctionByNameInChain(name);
+        if (!function) {
+            auto label = owner->GetFullName() + L":" + name;
+            std::string error = "required encounter function missing: ";
+            for (const wchar_t c : label) error.push_back(static_cast<char>(c <= 0x7f ? c : L'?'));
+            throw std::runtime_error(error);
+        }
+        return function;
+    };
     types[8].bind(find(L"/Script/Engine.Default__SubsystemBlueprintLibrary"));
-    types[9].bind(types[8].object->GetFunctionByNameInChain(L"GetGameInstanceSubsystem"));
-    types[10].bind(find(L"/Script/QuestSystem.QuestSystemImpl"));
-    types[11].bind(find(L"/Script/QuestSystem.Default__QuestSystemBlueprintLibrary"));
-    types[12].bind(types[11].object->GetFunctionByNameInChain(L"GetFactsDB"));
+    types[9].bind(method(types[8].object, L"GetGameInstanceSubsystem"));
+    types[10].bind(find(L"/Script/Quest.QuestSystemImpl"));
+    types[11].bind(find(L"/Script/Quest.Default__QuestSystemBlueprintLibrary"));
+    types[12].bind(method(types[11].object, L"GetFactsDB"));
     types[13].bind(find(L"/Script/FactsDB.FactsDB"));
-    types[14].bind(find(L"/Script/FactsDB.FactsDB:FactDoesExist"));
-    types[15].bind(find(L"/Script/FactsDB.FactsDB:FactGetInt"));
-    types[16].bind(find(L"/Script/FactsDB.FactsDB:FactSetInt"));
+    auto factsDefault = find(L"/Script/FactsDB.Default__FactsDB");
+    types[14].bind(method(factsDefault, L"FactDoesExist"));
+    types[15].bind(method(factsDefault, L"FactGetInt"));
+    types[16].bind(method(factsDefault, L"FactSetInt"));
     types[17].bind(find(L"/Script/Population.PopulationSystemImpl"));
     types[18].bind(find(L"/Script/Population.DynamicActionPoint"));
     require(static_cast<UClass*>(types[18].object)->GetPropertiesSize() == 0x440, "dynamic activity point layout changed");

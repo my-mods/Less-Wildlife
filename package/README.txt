@@ -45,7 +45,7 @@ Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to
 
 Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Population summaries include counts, deferred areas, failures and callback timings. Replacement messages report saved decisions, appearance resets, suppression, exclusions and failed validation. Respawn messages distinguish next-day scheduling, visibility delays, dead-member cleanup and refill attempts. A successful attempt message alone does not confirm that actors appeared.
 
-Examples and repeated messages are limited, with aggregate reports at most once per ten seconds of activity. Logging Off skips optional diagnostics and timing. Save and encounter processing remains active. If any required native function, layout or hook cannot be validated, replacement is unavailable while the Lua population controls remain available. Turn Logging Off after troubleshooting.
+Examples and repeated messages are limited, with aggregate reports at most once per ten seconds of activity. Logging Off skips optional diagnostics and timing. Save and encounter processing remains active. If any required native function, layout or hook cannot be validated, replacement is unavailable while the Lua population controls remain available. Missing-object and missing-function errors identify the required binding. Turn Logging Off after troubleshooting.
 
 ## Credits
 
