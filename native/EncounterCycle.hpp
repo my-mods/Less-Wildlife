@@ -78,7 +78,7 @@ bool advanceCycle(EncounterDecision& decision, std::uint64_t expectedCycle, Resp
     return true;
 }
 
-// A versioned value format for the future save adapter. Never use native struct
+// A versioned value format used by DecisionJournal. Never use native struct
 // padding, object pointers or FName indices as persistent data. The checksum
 // detects damaged records; it is not an authentication or collision guarantee.
 using DecisionBytes = std::array<std::uint8_t, 40>;

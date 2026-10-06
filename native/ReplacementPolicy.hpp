@@ -29,8 +29,4 @@ Outcome choose(const Options& options, Uniform&& uniform) {
     return pool[count == 1 ? 0 : draw(count)];
 }
 
-// The first in-game gate intentionally offers only the two deterministic
-// endpoints. Random selection, other enemies and suppression are not activated
-// until encounter persistence and natural respawn have been observed in game.
-inline bool prototypeEnabled(std::int64_t percent) { return percent == 100; }
 }

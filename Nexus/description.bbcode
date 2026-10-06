@@ -1,43 +1,35 @@
 [size=5][b][color=#E8C88A]Less Wildlife[/color][/b][/size]
 
-Adjust boar herds and wolf packs from [b]10% to 200%[/b], with a separate switch for each species. [b]100% is the normal population and the default[/b]; 200% doubles the original population.
+Adjust boar herds and wolf packs from [b]10% to 200%[/b] of their original population, with independent switches for each species. [b]100% is normal and the default[/b]; 200% doubles it.
 
-The optional [b]Boars to bandits[/b] and [b]Wolves to bandits[/b] settings independently replace eligible newly generated herds and packs with bandits, keeping their selected group size. Both default to Off. Supported wolves include brown, white and astral variants; quest-controlled, scripted and summoned encounters are excluded.
+Make woodland encounters less predictable with separate [b]0–100% replacement chances[/b] for boars and wolves. Enable [b]Bandits, Blood guards, Vidmo, Kobolds and No spawn[/b] independently. One roll chooses the result for the whole group, equally among its enabled outcomes.
 
-Only ordinary wild boars and wolves are affected. Quest and named variants, other creatures, health and damage keep their normal values. Positive populations always retain at least one animal.
+At 60% with Bandits and Kobolds enabled, about 40% of groups remain animals, 30% become bandits and 30% become kobolds. An empty pool keeps the animals. Replacement chances default to 0%; the four enemy choices default to On and No spawn defaults to Off.
+
+Results stay with the game save through travel and reloading. The next natural respawn rolls again using the current settings. Partial kills do not reroll surviving members. [b]No spawn[/b] leaves the encounter empty for its current cycle while retaining its later respawn opportunity.
+
+Supported ordinary wolves include brown, white and astral variants. Quest-gated encounters, quest-specific animals, bosses, summons, authored AI overrides and fixed scripted encounters are excluded. Replacement enemies are hostile, retain the selected group size and use their own combat AI, equipment and loot. Roaming activities avoid inherited animal poses.
 
 [size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
 
-Open [b]Mod Settings > Less Wildlife[/b], choose your settings and press Apply. Population changes take effect on later area encounters.
+Open [b]Mod Settings > Less Wildlife[/b], choose your settings and press Apply.
 
 [list]
-[*][b][color=#A8D5C2]Population:[/color][/b] 10% to 200% in 1% steps. Shared by the enabled species; default 100%. Quantities are rounded to the nearest animal.
-[*][b][color=#A8D5C2]Adjust boars:[/color][/b] On applies the selected percentage to ordinary boar herds. Off restores original values still controlled by this mod. Default: On.
-[*][b][color=#A8D5C2]Adjust wolves:[/color][/b] The same independent choice for ordinary wolf packs. Default: On.
-[*][b][color=#A8D5C2]Boars to bandits:[/color][/b] On replaces eligible new boar herds with bandits. Existing encounters are unaffected. Default: Off.
-[*][b][color=#A8D5C2]Wolves to bandits:[/color][/b] On replaces eligible new wolf packs, including brown, white and astral variants, with bandits. Existing encounters are unaffected. Default: Off.
-[*][b][color=#A8D5C2]Logging:[/color][/b] Writes population counts, timings and replacement respawn details to UE4SS.log, including next-day scheduling and visibility delays. Default: Off.
+[*][b]Population:[/b] 10% to 200% in 1% steps. Rounded to the nearest animal, with at least one for a positive population. Default: 100%.
+[*][b]Adjust boars / Adjust wolves:[/b] Independent population adjustments. Off restores original values still controlled by this mod on later encounters. Default: On.
+[*][b]Boars / Wolves — Replacement chance:[/b] 0% to 100%. Changes apply to new groups and natural respawn cycles. Default: 0%.
+[*][b]Bandits / Blood guards / Vidmo / Kobolds:[/b] Each On toggle includes that enemy in its species' pool. Default: On.
+[*][b]No spawn:[/b] Include an empty encounter among the outcomes. Default: Off.
+[*][b]Logging:[/b] Optional counts, timings, saved decisions and respawn details in UE4SS.log. Default: Off.
 [/list]
 
-[color=#E6B980]Off disables population scaling for that species; it does not remove the animals.[/color] Already spawned animals are unaffected. Setting Population to 100% also restores original values still controlled by this mod. Changes made by the game or another mod are preserved.
+Population and replacement settings are independent. Already spawned creatures are unaffected. Unusually large areas or dense loading bursts may retain their current values.
 
-[size=3][b][color=#A8D5C2]Manual configuration[/color][/b][/size]
+[size=3][b]Manual configuration[/b][/size]
 
-Launch the game once to create settings.ini, then close it. Open this file inside your The Blood of Dawnwalker game folder:
+Launch once to create [b]Dawnwalker/Binaries/Win64/ue4ss/Mods/LessWildlife/settings.ini[/b], then close the game before editing it. Use 10–200 for populationPercent, 0–100 for boarReplacementChance and wolfReplacementChance, and 0/1 for the switches. Each species has Bandits, BloodGuards, Vidmo, Kobolds and NoSpawn keys prefixed with boar or wolf. Missing keys are added at startup while valid preferences are preserved.
 
-[code]Dawnwalker\Binaries\Win64\ue4ss\Mods\LessWildlife\settings.ini[/code]
-
-[code][LessWildlife]
-populationPercent = 100
-reduceBoars = 1
-reduceWolves = 1
-wolfReplacementChance = 0
-boarReplacementChance = 0
-debugLogging = 0[/code]
-
-Use an integer from 10 to 200 for populationPercent. For population and Logging switches, use 0 for Off or 1 for On. For boarReplacementChance and wolfReplacementChance, use 0 for Off or 100 for On. Save and restart the game. Missing population switches default to On; missing replacement switches default to Off.
-
-Unusually large areas or very dense bursts of encounters keep their current population values until a later encounter can be handled.
+For next-day respawn, defeat every group member, leave the area, advance into the next game day and return. The game's visibility clearance and corpse cleanup can delay it. Travel or reloading alone does not reroll the group.
 
 [size=4][b][color=#E8C88A]Installation[/color][/b][/size]
 
@@ -88,7 +80,7 @@ Gather nearby harvestable resources with one keyboard press or controller hold.
 
 [b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/711]Less Wildlife[/url][/color][/b]
 Make ordinary boar herds and wolf packs smaller—or larger.
-[b]Highlights:[/b] Population from 10% to 200%; separate boar and wolf switches; quest and named animals keep their normal values.
+[b]Highlights:[/b] Population from 10% to 200%; independent replacement chances and enemy pools; saved group outcomes.
 
 [size=4][b][color=#E8C88A]Your view, your style[/color][/b][/size]
 

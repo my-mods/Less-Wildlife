@@ -1,14 +1,14 @@
 -- File-backed settings shared by startup and the optional Mod Setting Menu.
 local M={}
-M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','debugLogging'}
-M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,debugLogging=0}
+M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','boarBandits','boarBloodGuards','boarVidmo','boarKobolds','boarNoSpawn','wolfBandits','wolfBloodGuards','wolfVidmo','wolfKobolds','wolfNoSpawn','debugLogging'}
+M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,boarBandits=1,boarBloodGuards=1,boarVidmo=1,boarKobolds=1,boarNoSpawn=0,wolfBandits=1,wolfBloodGuards=1,wolfVidmo=1,wolfKobolds=1,wolfNoSpawn=0,debugLogging=0}
 local function value(key,raw)
  local n=tonumber(raw)
  if not n or n~=n or n%1~=0 then return end
  if key=='populationPercent' then
   if n>=1 and n<=200 then return math.max(10,n) end
  elseif key=='boarReplacementChance' or key=='wolfReplacementChance' then
-  if n==0 or n==100 then return n end
+  if n>=0 and n<=100 then return n end
  elseif n==0 or n==1 then return n end
 end
 local function lines(data)

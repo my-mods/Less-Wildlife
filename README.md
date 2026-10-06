@@ -4,9 +4,9 @@
 
 Sets ordinary wild-boar herds and wolf packs to a configurable percentage of their original size. Choose from 10% to 200%: 100% is the normal population and the default, while 200% doubles it. Quantities are rounded to the nearest animal, with at least one animal wherever the original population was positive. Quest and named variants, other creatures, health and damage keep their normal values.
 
-The optional Boars to bandits and Wolves to bandits settings independently replace eligible newly generated herds and packs with bandits. Both default to Off and keep the group size selected by Population. Supported wolves include brown, white and astral variants; quest-specific, boss and summoned definitions are excluded.
+Give boars and wolves separate replacement chances from 0% to 100%. Enable Bandits, Blood guards, Vidmo, Kobolds or No spawn independently for each species. One roll chooses the result for the whole herd or pack. Supported wolves include brown, white and astral variants; quest-specific, boss and summoned definitions are excluded.
 
-One shared population hook handles animal counts. A native helper changes eligible wildlife encounter definitions before registration, keeping the original encounter row IDs, quantities and respawn policy. There are no background population scans. Unusually large areas or dense bursts retain their current values.
+Replacement chances default to 0%. Enemy choices default to On and No spawn defaults to Off. Population adjustment remains independent of replacement. The mod uses population events without background world scans. Unusually large areas or dense loading bursts may retain their current values.
 
 ## Requirements
 
@@ -27,19 +27,25 @@ Without the menu, close the game and set `populationPercent = 100` to your chose
 
 ## Boar and wolf replacement
 
-Set Boars to bandits, Wolves to bandits, or both to On and Apply before entering a new population area. Already generated encounters are left alone. These switches are independent of Adjust boars and Adjust wolves, which control quantity. The replacement switches accept only Off or On, represented by `boarReplacementChance = 0` or `100` and `wolfReplacementChance = 0` or `100` in `settings.ini`. Enabling both selects eligible new boar herds and wolf packs for replacement. Groups skipped during a dense loading burst remain unchanged. Other replacement outcomes and random percentages are not available yet.
+Open Mod Settings > Less Wildlife. Under Boars or Wolves, set Replacement chance and toggle the allowed outcomes, then Apply. Each enemy toggle adds that type to the species' random pool. All enabled outcomes have equal weight. For example, 60% with Bandits and Kobolds enabled leaves about 40% of groups as animals, 30% as bandits and 30% as kobolds. A single enabled outcome receives every successful replacement roll. An empty pool leaves the animals.
 
-Only wildlife entries with random spawn locations, an encounter role and next-day respawning are eligible. Quest-controlled encounters, entries with authored AI overrides or start conditions, and fixed scripted spawn points are left alone. Herds and packs retain their existing roaming boundaries. Bandits use their normal equipment, AI and loot, with roaming activities that do not play animal sleeping, sitting or eating animations. Existing animals are not destroyed and replaced after spawning.
+The chosen result belongs to the whole group and is stored with that game save. Travel, repeated overlap and loading the save reuse it. Settings changes apply to newly encountered groups and subsequent natural respawn cycles. Partial kills do not reroll the survivors. Group size retains the existing Population setting.
 
-These encounters follow the game's next-day respawn schedule. To check a cleared group, defeat every member, leave the area, let the game advance into the next day and return. Dead members still inside the game's population visibility region can delay the respawn. Loading a save or briefly leaving and returning does not itself advance this schedule. Logging can show whether the group is waiting for the next day, visibility clearance or another cleanup attempt.
+No spawn makes the selected encounter empty for its current cycle while retaining the game's respawn schedule. It does not permanently remove the group. A later natural cycle rolls again using the current settings.
+
+Only wildlife entries with random spawn locations, an encounter role and next-day respawning are eligible. Quest-gated encounters, authored AI overrides and fixed scripted spawn points are excluded. Existing creatures are not destroyed and replaced. Replacement enemies are hostile toward the player and use their own combat AI, equipment and loot. Generated roaming activities clear the animal sleeping, sitting and eating montages that caused humanoids to start in awkward poses. Humanoid appearance initialization also clears inherited animal coat data and resets reused appearance fields when a new cycle chooses another enemy.
+
+For manual configuration, set `boarReplacementChance` and `wolfReplacementChance` to integers from 0 to 100. Each species has five 0/1 switches: `boarBandits`, `boarBloodGuards`, `boarVidmo`, `boarKobolds`, `boarNoSpawn`, and the matching `wolf` names. A value of 1 includes that outcome; 0 excludes it. Close the game before editing `settings.ini`.
+
+These encounters follow the game's next-day respawn schedule. Defeat every member, leave the area, let the game advance into the next day and return. Dead members inside the population visibility region can delay respawn, and cleanup can require another attempt. Loading a save or briefly leaving and returning does not itself start a new cycle.
 
 ## Logging
 
 Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to change it while playing. Without the menu, close the game and set `debugLogging = 1` under `[LessWildlife]` in the mod's `settings.ini`. The file is created on the first launch and is not bundled in the archive.
 
-Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify changed encounter rows, their species, reasons for retaining wildlife, and rolled-back changes. Appearance messages count inherited animal coat values cleared before normal bandit appearance initialization. A changed-row message records the table conversion, not confirmation that an actor spawned. Skip examples are limited to two per reason per session, and appearance-repair examples to two per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
+Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Population summaries include counts, deferred areas, failures and callback timings. Replacement messages report saved decisions, appearance resets, suppression, exclusions and failed validation. Respawn messages distinguish next-day scheduling, visibility delays, dead-member cleanup and refill attempts. A successful attempt message alone does not confirm that actors appeared.
 
-Respawn messages identify replacement groups by their original area and row, with living and dead member counts. They distinguish next-day scheduling, visibility delays, cleanup, partial refills and attempts after no members survive. An accepted attempt still needs an in-game check that the new group appeared. Repeated identical observations are filtered and detail messages are rate-limited. If the respawn observer cannot validate the required game code or layouts, its diagnostics are unavailable while the existing replacement and population controls remain available.
+Examples and repeated messages are limited, with aggregate reports at most once per ten seconds of activity. Logging Off skips optional diagnostics and timing. Save and encounter processing remains active. If any required native function, layout or hook cannot be validated, replacement is unavailable while the Lua population controls remain available. Turn Logging Off after troubleshooting.
 
 ## Credits
 

@@ -23,7 +23,4 @@ constexpr Species speciesOf(std::wstring_view path) {
     for (const auto& item : wildlifeDefinitions) if (item.path == path) return item.species;
     return Species::None;
 }
-constexpr unsigned replacementSettings(long long boars, long long wolves) {
-    return (boars == 100 ? 1u : 0u) | (wolves == 100 ? 2u : 0u);
-}
 }

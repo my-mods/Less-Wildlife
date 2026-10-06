@@ -20,6 +20,24 @@ local system,frameFn,frame,frameEntries,frameTime
 local debugLogging,populationPercent=false,100
 local reduceBoars,reduceWolves=true,true
 local boarReplacementChance,wolfReplacementChance,settingsReady=0,0,false
+local pools={boar=15,wolf=15}
+local outcomeValues={}
+local outcomeNames={'Bandits','BloodGuards','Vidmo','Kobolds','NoSpawn'}
+local function updatePools(values)
+ for _,animal in ipairs({'boar','wolf'})do
+  local mask=0
+  for i,name in ipairs(outcomeNames)do
+   local key=animal..name;local v=values[key]
+   if v==0 or v==1 then outcomeValues[key]=v end
+   if outcomeValues[key]==nil then outcomeValues[key]=i<5 and 1 or 0 end
+   if outcomeValues[key]==1 then mask=mask+2^(i-1) end
+  end
+  pools[animal]=mask
+ end
+end
+local function chance(value)
+ if type(value)=='number' and value%1==0 and value>=0 and value<=100 then return value end
+end
 local stats,lastSummary={},nil
 local function log(s)print('[Less Wildlife] '..s..'\n')end
 local function valid(o)return o~=nil and o:IsValid()==true end
@@ -37,12 +55,13 @@ local function readSettings()
  populationPercent=values.populationPercent
  reduceBoars,reduceWolves=values.reduceBoars==1,values.reduceWolves==1
  debugLogging=values.debugLogging==1
+ updatePools(values)
  boarReplacementChance,wolfReplacementChance,settingsReady=values.boarReplacementChance,values.wolfReplacementChance,ready
  if not ready then log('Settings upgrade failed; replacement stays Off: '..tostring(why)) end
 end
 local function configureReplacement()
- if type(_LWConfigureWildlife)=='function' then
-  _LWConfigureWildlife(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,debugLogging and 1 or 0)
+ if type(_LWConfigureReplacementV1)=='function' then
+  _LWConfigureReplacementV1(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,pools.boar,pools.wolf,debugLogging and 1 or 0)
  end
 end
 local function record(key,n)
@@ -191,8 +210,9 @@ pcall(function()
   if values.reduceBoars==0 or values.reduceBoars==1 then reduceBoars=values.reduceBoars==1 end
   if values.reduceWolves==0 or values.reduceWolves==1 then reduceWolves=values.reduceWolves==1 end
   if values.debugLogging~=nil then debugLogging=values.debugLogging==1 end
-  if values.wolfReplacementChance==0 or values.wolfReplacementChance==100 then wolfReplacementChance=values.wolfReplacementChance end
-  if values.boarReplacementChance==0 or values.boarReplacementChance==100 then boarReplacementChance=values.boarReplacementChance end
+  wolfReplacementChance=chance(values.wolfReplacementChance) or wolfReplacementChance
+  boarReplacementChance=chance(values.boarReplacementChance) or boarReplacementChance
+  updatePools(values)
   configureReplacement()
   stats={};lastSummary=nil
  end)
@@ -207,8 +227,8 @@ initialize=function()
   system=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
   assert(valid(system),'KismetSystemLibrary unavailable')
   frameFn=assert(method(system,'GetFrameCount'),'GetFrameCount unavailable')
-  if type(_LWStartPrototype)=='function' and type(_LWConfigureWildlife)=='function' then
-   if not _LWStartPrototype() then log('Native replacement unavailable; population controls remain active.') end
+  if type(_LWStartReplacementV1)=='function' and type(_LWConfigureReplacementV1)=='function' then
+   if not _LWStartReplacementV1() then log('Native replacement unavailable; population controls remain active.') end
   elseif boarReplacementChance~=0 or wolfReplacementChance~=0 then log('Native replacement helper is missing or outdated; population controls remain active.') end
   local before,after=RegisterHook(HOOK,function(context)
    record('overlaps')

@@ -2,19 +2,16 @@
 
 ## Unreleased
 
-- Add optional respawn logging for next-day scheduling, visibility delays, cleanup and partial refills.
-- Fix replacement bandits using animal sleeping, sitting and eating poses before standing up.
-- Reduce repeated work when loading wildlife encounters.
-- Fix replacement bandits appearing naked, red, or with an unrelated character's appearance.
-- Fix wolf replacement being unavailable at startup even when Wolves to bandits is On.
-- Allow ordinary roaming wolf packs with existing territory boundaries to be replaced.
-- Add independent Boars to bandits and Wolves to bandits switches, retaining the selected group size.
-- Include brown, white and astral wolf variants in population adjustment and eligible bandit replacements.
-- Add missing settings on startup and consolidate duplicate keys so existing configurations remain editable in Mod Settings.
-- Expand Population to 10–200%, with 100% as the normal population and new default.
-- Allow positive populations of one animal to grow to two at 200%.
-- Rename the independent species switches to Adjust boars and Adjust wolves; Off restores owned original values.
-- Preserve existing 10–100% preferences and treat older 1–9% values as 10%.
+- Add separate 0–100% replacement chances for boar herds and wolf packs.
+- Choose Bandits, Blood guards, Vidmo, Kobolds and No spawn independently for each species. Enabled outcomes have equal chances; an empty selection keeps the animals.
+- Keep each group's result through travel and save/load, with a new roll on natural respawn. Settings changes affect subsequent cycles.
+- Let No spawn leave a group empty for one cycle while preserving its later respawn.
+- Keep selected group sizes and exclude quest-gated and scripted encounters.
+- Fix replacement humanoids inheriting animal poses or unrelated appearances, including when a respawn reuses an old group.
+- Include ordinary brown, white and astral wolves.
+- Add missing menu settings while preserving valid preferences and consolidating duplicate keys.
+- Set Population from 10% to 200%, with independent boar and wolf adjustments and 100% as the default.
+- Add optional Logging for replacement, save decisions and next-day respawn conditions.
 
 ## 0.0.0
 

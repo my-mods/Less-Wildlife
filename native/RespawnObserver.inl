@@ -1,5 +1,5 @@
-// Included inside LessWildlife after the common native helpers. These optional
-// hooks observe the normal pipeline; they never suppress or repeat an operation.
+// Included inside LessWildlife after the common native helpers. These
+// diagnostics accompany the saved encounter lifecycle in EncounterRuntime.inl.
 namespace RespawnObserver {
 using Queue = void(*)(UObject*, UObject*);
 using Eligibility = bool(*)(UObject*, void*);
@@ -28,7 +28,9 @@ bool capture(UObject* service, void* entry, RespawnEvent event, RespawnSnapshot&
     if (!observing(service) || !entry) return false;
     ++events;
     const auto row = read<void*>(entry, 0x10);
-    if (!row || definitionKey(static_cast<unsigned char*>(row) + 0x30) != banditKey) return false;
+    if (!row) return false;
+    auto definition = definitionKey(static_cast<unsigned char*>(row) + 0x30);
+    if (definitionSpecies(definition) == Species::None && std::find(enemyKeys.begin(), enemyKeys.end(), definition) == enemyKeys.end()) return false;
     sample.area = read<std::array<uint32_t, 4>>(entry, 0x110);
     sample.row = read<uint64_t>(entry, 8);
     if (!(sample.area[0] || sample.area[1] || sample.area[2] || sample.area[3])) return false;
@@ -104,6 +106,8 @@ void queued(UObject* service, UObject* stub) {
         if (row && read<uint8_t>(row, 0xc0) == 1)
             observed = measure(service, read<void*>(stub, 0xe8), RespawnEvent::Queued, sample);
     }
+    try { EncounterRuntime::queued(service, stub); }
+    catch (...) { if (logging) warning(L"Encounter completion could not be saved."); }
     originalQueue(service, stub);
     if (observed) reportSafely(sample, RespawnEvent::Queued, RespawnEvidence::NextDayQueued);
 }
@@ -119,7 +123,23 @@ bool eligible(UObject* service, void* entry) {
 bool attempt(UObject* service, void* entry, void* context, bool forced) {
     RespawnSnapshot sample{};
     const bool observed = measure(service, entry, RespawnEvent::Attempt, sample);
+    EncounterRuntime::AttemptScope scope;
+    if (active && configurationReady && !failed && GetCurrentThreadId() == gameThread && enabled) {
+        try { EncounterRuntime::prepareAttempt(service, entry, forced, !forced && context == nullptr, scope); }
+        catch (const std::exception& error) {
+            if (logging && warningCount.fetch_add(1) < 8) {
+                std::string text(error.what()); message(L"Saved encounter unavailable: " + std::wstring(text.begin(), text.end()));
+            }
+        }
+    }
+    struct ScopeGuard {
+        EncounterRuntime::AttemptScope* previous;
+        explicit ScopeGuard(EncounterRuntime::AttemptScope* current) : previous(EncounterRuntime::attemptScope) { EncounterRuntime::attemptScope = current; }
+        ~ScopeGuard() { EncounterRuntime::attemptScope = previous; }
+    } guard(&scope);
     const bool result = originalAttempt(service, entry, context, forced);
+    if (result && scope.decision) EncounterRuntime::consumedFresh(scope.decision->key);
+    if (logging && scope.suppressed && reports++ < 12) message(L"No spawn: completed " + std::to_wstring(scope.suppressed) + L" registered stubs; original respawn policy retained.");
     // Never read the borrowed entry/stub array after spawning callbacks run.
     if (observed) reportSafely(sample, RespawnEvent::Attempt, classifyAttempt(sample, forced, result));
     return result;
@@ -150,7 +170,7 @@ void start() {
         field(type, L"PopulationSystem", 0x48, 8, L"ObjectProperty");
         std::wstring error;
         if (!RespawnContract::validate(error)) {
-            if (logging) message(L"Respawn observation unavailable: " + error + L". Existing replacement remains available.");
+            if (logging) message(L"Encounter lifecycle unavailable: " + error + L". Replacement cannot start; population controls remain available.");
             stop(); return;
         }
         const std::array<void*, 4> callbacks{reinterpret_cast<void*>(&queued), reinterpret_cast<void*>(&eligible),
@@ -164,13 +184,13 @@ void start() {
         }
         for (auto target : targets) require(MH_EnableHook(target) == MH_OK, "respawn observation hook activation failed");
         enabled = true;
-        if (logging) message(L"Respawn observation ready; Logging records scheduling, visibility, cleanup and refill evidence.");
+        if (logging) message(L"Encounter lifecycle hooks ready; Logging records scheduling, visibility, cleanup and refill evidence.");
     } catch (const std::exception& error) {
         stop();
         if (logging) try {
-            std::string detail(error.what()); message(L"Respawn observation unavailable: " + std::wstring(detail.begin(), detail.end())
-                + L". Existing replacement and population controls remain available.");
-        } catch (...) { /* An unavailable diagnostic sink must not disable replacement. */ }
+            std::string detail(error.what()); message(L"Encounter lifecycle unavailable: " + std::wstring(detail.begin(), detail.end())
+                + L". Replacement cannot start; population controls remain available.");
+        } catch (...) { /* Startup still checks enabled when diagnostics fail. */ }
     }
 }
 }

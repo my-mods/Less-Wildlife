@@ -1,4 +1,6 @@
 #include "ReplacementPolicy.hpp"
+#include "DecisionJournal.hpp"
+#include <random>
 #include "Transaction.hpp"
 #include "WildlifeDefinitions.hpp"
 #include "AppearanceRepair.hpp"
@@ -13,6 +15,7 @@
 #include <Unreal/Engine/UDataTable.hpp>
 #include "NativeContract.hpp"
 #include "RespawnContract.hpp"
+#include "LifecycleContract.hpp"
 #include <MinHook.h>
 #include <array>
 #include <atomic>
@@ -21,6 +24,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <mutex>
 
 namespace LessWildlife {
 using namespace RC::Unreal;
@@ -33,7 +38,8 @@ using AppearanceInitializer = void(*)(UObject*, UObject*);
 AppearanceInitializer originalAppearance{};
 void* appearanceTarget{};
 std::atomic_uint replacementMask{};
-std::atomic_bool logging{}, active{}, failed{};
+std::atomic_uint64_t replacementOptions{};
+std::atomic_bool logging{}, active{}, failed{}, configurationReady{};
 std::atomic_uint warningCount{};
 DWORD gameThread{};
 enum class SkipReason { None, Conditions, Scripted, Overrides, Table, Budget, Count };
@@ -82,13 +88,15 @@ struct TypeRef {
             && (!serial || serial == slot->GetSerialNumber());
     }
 };
-std::array<TypeRef, 8> types;
+std::array<TypeRef, 19> types;
+namespace EncounterRuntime { void invalidateArea(int32_t); }
 TypeRef observerType;
 std::atomic_bool listening{};
 struct Listener final : FUObjectDeleteListener {
     void NotifyUObjectDeleted(const UObjectBase*, int32_t index) override {
         for (auto& type : types) if (type.index == index) { type.alive = false; active = false; }
         if (observerType.index == index) observerType.alive = false;
+        EncounterRuntime::invalidateArea(index);
     }
     void OnUObjectArrayShutdown() override {
         active = false;
@@ -129,6 +137,11 @@ struct DefinitionKey {
 };
 std::array<DefinitionKey, wildlifeDefinitions.size()> wildlifeKeys;
 DefinitionKey banditKey;
+constexpr const wchar_t* enemies[] = {bandit,
+ L"/Game/_Dawnwalker/Combat/Enemies/BloodSlave/NPCDef_BloodSlave_Base.NPCDef_BloodSlave_Base_C",
+ L"/Game/_Dawnwalker/Combat/Enemies/Vidmo/NPCDef_Vidmo_Base.NPCDef_Vidmo_Base_C",
+ L"/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Kobold/NPCDef_Kobold_Forest_Combat.NPCDef_Kobold_Forest_Combat_C"};
+std::array<DefinitionKey, 4> enemyKeys;
 
 void bindDefinitionKeys() {
     auto key = [](std::wstring_view path) {
@@ -138,6 +151,7 @@ void bindDefinitionKeys() {
     };
     for (size_t i = 0; i < wildlifeKeys.size(); ++i) wildlifeKeys[i] = key(wildlifeDefinitions[i].path);
     banditKey = key(bandit);
+    for (size_t i = 0; i < enemyKeys.size(); ++i) enemyKeys[i] = key(enemies[i]);
 }
 
 void bindSchema() {
@@ -256,7 +270,7 @@ struct Operation {
         montageProperty->CopyCompleteValue(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data);
     }
     bool readbackMatches() {
-        return definitionKey(destination) == banditKey && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60)
+        return definitionKey(destination) == definitionKey(replacement->data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60)
             && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data);
     }
     void restore() {
@@ -277,13 +291,14 @@ struct OperationList {
     Operation& operator[](size_t n){return *values[n];}
 };
 
+#include "EncounterRuntime.inl"
+
 void transform(UObject* area) {
     for (const auto& type : types) require(type.valid(), "population metadata expired");
     require(area && area->IsA(areaType), "builder owner is not a population area");
     auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x360);
     require(arrayValid(entries, 64) && arrayValid(activeEntries, 64), "population entry limit or layout");
-    const auto settings = replacementMask.load();
-    auto selected = [settings](const DefinitionKey& key) { return (settings & static_cast<unsigned>(definitionSpecies(key))) != 0; };
+    auto selected = [](const DefinitionKey& key) { return definitionSpecies(key) != Species::None; };
     bool hasWildlife = false;
     for (int i = 0; i < entries.count; ++i) if (selected(definitionKey(entries.data + i * 0x100))) { hasWildlife = true; break; }
     if (!hasWildlife) { if (logging) ++stats.nonWildlife; return; }
@@ -291,8 +306,7 @@ void transform(UObject* area) {
     auto conditions = read<Array>(area, 0x350);
     require(arrayValid(conditions, 64), "population start condition layout");
     if (conditions.count) { skip(area, SkipReason::Conditions); return; }
-    require(read<Array>(area, 0x388).count == 0 && read<Array>(area, 0x398).count == 0,
-            "population activity points already materialized");
+    const bool pointsBuilt = read<Array>(area, 0x388).count != 0 || read<Array>(area, 0x398).count != 0;
     // Guard areas also bound ordinary roaming packs. Preserve the game's
     // boundary and registration data; attached scripted spawn points are
     // excluded by the entry behavior/role/respawn checks below.
@@ -302,7 +316,7 @@ void transform(UObject* area) {
     require(rows.Num() == activeEntries.count && rows.Num() <= 64 && rows.GetMaxIndex() <= 64, "generated row mapping changed");
     // Finish eligibility and row validation before any engine property import
     // or backup allocation. Scripted or mixed groups incur no preparation work.
-    struct PlannedRow { void* row; void* entry; };
+    struct PlannedRow { void* row; void* entry; EncounterKey key; };
     std::array<PlannedRow, 64> planned{};
     size_t plannedCount = 0;
     unsigned ordinal = 0, boarRows = 0, wolfRows = 0;
@@ -325,39 +339,77 @@ void transform(UObject* area) {
         if (reason == SkipReason::None) reason = entryReason(current);
         if (reason != SkipReason::None) { skip(area, reason); return; }
         require(arrayValid(read<Array>(current, 0xb0), 64), "activity montage list limit or layout");
-        require(definitionKey(row + 0x30) == sourcePath && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
+        require((definitionKey(row + 0x30) == sourcePath || std::find(enemyKeys.begin(), enemyKeys.end(), definitionKey(row + 0x30)) != enemyKeys.end())
+                && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
                 "generated wildlife row changed externally");
         require(read<uint64_t>(row, 0x10) == 0 && read<uint64_t>(row, 0x58) == 0 && read<uint64_t>(row, 0x60) == 0
                 && read<uint64_t>(row, 0x68) == 0 && emptyTags(row + 0x70), "authored wildlife AI overrides need explicit handling");
-        planned[plannedCount++] = {row, current};
+        auto identity = EncounterRuntime::identify(read<std::array<uint32_t, 4>>(area, 0x1e0), pair.Key);
+        require(identity && identity->row == index && wildlifeKeys[identity->definition] == sourcePath, "encounter stable identity mismatch");
+        planned[plannedCount++] = {row, current, *identity};
         if (definitionSpecies(sourcePath) == Species::Boar) ++boarRows; else ++wolfRows;
     }
     if (!plannedCount) return;
-    Value replacement(definitionProperty);
+    EncounterRuntime::rememberArea(area);
+    EncounterRuntime::Facts store(area);
+    struct Prepared {
+        DecisionJournal::Slot saved;
+        EncounterDecision decision;
+        std::unique_ptr<Value> replacement;
+    };
+    std::vector<Prepared> prepared; prepared.reserve(plannedCount);
     Value noMontages(montageProperty);
-    auto end = definitionProperty->ImportText_Direct(bandit, replacement.data, area, 0, nullptr);
-    require(end && !*end && definitionKey(replacement.data) == banditKey, "bandit soft reference import failed");
-    OperationList operations;
-    operations.values.reserve(plannedCount);
-    for (size_t i = 0; i < plannedCount; ++i) operations.values.push_back(std::make_unique<Operation>(planned[i].row, planned[i].entry, replacement, noMontages));
-    auto result = commit(operations);
-    if (result == TransactionResult::RollbackFailed) { failed = true; warning(L"Replacement disabled: rollback could not be verified. Population controls remain available."); }
-    else if (result == TransactionResult::RolledBack) { if (logging) ++stats.rolledBack; warning(L"Replacement rolled back; original encounter retained."); }
-    else {
-        if (logging) ++stats.transformed;
-        if (logging) message(L"Prototype wildlife -> bandit: " + area->GetFullName() + L"; boar rows=" + std::to_wstring(boarRows)
-            + L", wolf rows=" + std::to_wstring(wolfRows) + L"; animal activity montages removed; original row keys/counts/respawn retained.");
+    OperationList operations; operations.values.reserve(plannedCount);
+    for (size_t i = 0; i < plannedCount; ++i) {
+        auto& plan = planned[i];
+        auto saved = DecisionJournal::locate(store, plan.key);
+        auto decision = restoreOrBegin(plan.key, saved.decision, EncounterRuntime::options(plan.key.definition), EncounterRuntime::uniform);
+        // Adopt already converted cached rows from the earlier bandit helper.
+        if (!saved.decision && definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == banditKey)
+            decision = {plan.key, 0, Outcome::Bandit, CyclePhase::Active};
+        auto replacement = std::make_unique<Value>(definitionProperty);
+        auto end = definitionProperty->ImportText_Direct(EncounterRuntime::path(decision), replacement->data, area, 0, nullptr);
+        require(end && !*end && definitionKey(replacement->data) == EncounterRuntime::keyFor(decision), "outcome soft reference import failed");
+        if (decision.outcome != Outcome::Original && decision.outcome != Outcome::None) {
+            if (pointsBuilt) {
+                require(definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == EncounterRuntime::keyFor(decision),
+                    "cached encounter changed before registration");
+            } else operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, noMontages));
+        }
+        prepared.push_back({std::move(saved), decision, std::move(replacement)});
+    }
+    // Save before registration; no choice is kept in an external/global save.
+    for (auto& item : prepared) if (!item.saved.decision) {
+        DecisionJournal::save(store, item.saved, item.decision);
+        EncounterRuntime::noteFresh(item.decision.key);
+    }
+    const auto result = commit(operations);
+    if (result != TransactionResult::Applied) {
+        // The row transaction retained animals. Commit that result to this save
+        // as well, so a later overlap cannot silently roll again.
+        for (auto& item : prepared) {
+            auto original = item.decision; original.outcome = Outcome::Original; original.phase = CyclePhase::Active;
+            DecisionJournal::save(store, item.saved, original);
+        }
+        if (logging) ++stats.rolledBack;
+        if (result == TransactionResult::RollbackFailed) { failed = true; warning(L"Replacement disabled after an unverifiable rollback."); }
+        return;
+    }
+    if (logging) {
+        ++stats.transformed;
+        if (stats.transformed <= 12) message(L"Saved encounter outcomes: " + area->GetFullName() + L"; groups=" + std::to_wstring(plannedCount)
+            + L"; original identities, counts and respawn policies retained.");
     }
 }
 
 void builder(UObject* area) {
     // Always run the game's builder exactly once. It also handles its cached
-    // table. Never change an already registered/cached encounter in this gate.
-    const bool participate = active && replacementMask.load() != 0 && !failed && GetCurrentThreadId() == gameThread;
+    // table. Cached rows reuse saved decisions and never trigger another roll.
+    const bool participate = active && configurationReady && !failed && GetCurrentThreadId() == gameThread;
     auto prior = participate && area ? read<UObject*>(area, 0x370) : nullptr;
     original(area);
     if (!participate) return;
-    if (prior) { if (logging) ++stats.cached; return; }
+    if (prior && logging) ++stats.cached;
     auto started = std::chrono::steady_clock::now();
     if (logging) ++stats.builders;
     try {
@@ -366,6 +418,10 @@ void builder(UObject* area) {
         require(frame >= 0, "invalid frame counter");
         if (frame != workFrame) { workFrame = frame; workEntries = 0; workMicros = 0; }
         auto count = read<Array>(area, 0x340).count;
+        // Retain only indexed identity here, even if the table work must wait.
+        // A saved choice can then validate this area's quest gates and owned
+        // action points when the normal attempt callback restores it.
+        if (area && area->IsA(areaType) && count >= 0 && count <= 64) EncounterRuntime::rememberArea(area);
         if (count < 0 || count > 64 || workEntries + count > 128 || workMicros >= 2000) { skip(area, SkipReason::Budget); return; }
         workEntries += count;
         transform(area);
@@ -381,7 +437,7 @@ void builder(UObject* area) {
         auto now = GetTickCount64();
         if (now - stats.reported >= 10000) {
             stats.reported = now;
-            message(L"Prototype totals: new tables=" + std::to_wstring(stats.builders) + L", replaced=" + std::to_wstring(stats.transformed)
+            message(L"Encounter totals: new tables=" + std::to_wstring(stats.builders) + L", replaced=" + std::to_wstring(stats.transformed)
                 + L", skipped=" + std::to_wstring(stats.skipped) + L", rollback=" + std::to_wstring(stats.rolledBack)
                 + L", wildlife tables=" + std::to_wstring(stats.wildlife) + L", other tables=" + std::to_wstring(stats.nonWildlife)
                 + L", cached=" + std::to_wstring(stats.cached)
@@ -403,8 +459,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
         if (active && GetCurrentThreadId() == gameThread && definition && stub
             && types[6].valid() && types[7].valid()
             && definition->IsA(humanoidType) && stub->IsA(stubType)
-            && definition->GetClassPrivate()->GetFName() == banditClassName
-            && definition->GetClassPrivate()->GetPathName() == bandit
+            && EncounterRuntime::enemyDefinition(definition)
             && randomAppearanceProperty->GetPropertyValue(reinterpret_cast<unsigned char*>(definition) + 0x4f8)) {
             const auto name = stub->GetFName();
             const auto row = FName(name.GetComparisonIndex().ToUnstableInt(), 0).ToString();
@@ -414,7 +469,12 @@ void initializeAppearance(UObject* definition, UObject* stub) {
                 // Runs before the normal humanoid initializer, including saved
                 // encounters. No actor, CDO, shared appearance or inventory is
                 // replaced. The engine chooses and persists the bandit preset.
-                repaired = clearAnimalAppearance(read<void*>(stub, 0x38));
+                auto record = read<void*>(stub, 0x38);
+                auto scope = EncounterRuntime::attemptScope;
+                if (record && scope && scope->decision && scope->newCycle && read<void*>(stub, 0xe8) == scope->entry) {
+                    std::memset(static_cast<unsigned char*>(record) + 0x24, 0, 3);
+                    repaired = true;
+                } else repaired = clearAnimalAppearance(record);
             }
         }
     } catch (const std::exception&) {
@@ -427,7 +487,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
     }
     originalAppearance(definition, stub);
     if (measured && logging) {
-        if (repaired && appearanceStats.repaired <= 2) message(L"Discarded an animal coat variant before normal bandit appearance initialization.");
+        if (repaired && appearanceStats.repaired <= 2) message(L"Reset inherited appearance data before normal humanoid initialization.");
         const auto now = GetTickCount64();
         if (now - appearanceStats.reported >= 10000) {
             appearanceStats.reported = now;
@@ -444,6 +504,7 @@ bool start() {
     if (target || appearanceTarget || failed) return false;
     try {
         bindSchema();
+        EncounterRuntime::bind();
         std::wstring reason;
         auto candidate = NativeContract::resolve(reason);
         if (!candidate) { message(L"Replacement unavailable: " + reason); return false; }
@@ -458,12 +519,15 @@ bool start() {
         active = true;
         require(MH_EnableHook(appearanceTarget) == MH_OK, "appearance initializer hook activation failed");
         require(MH_EnableHook(target) == MH_OK, "population builder hook activation failed");
+        EncounterRuntime::start();
         RespawnObserver::start();
-        if (logging) message(L"Boar/wolf-to-bandit prototype ready; in-game spawn/save/respawn gate pending.");
+        require(RespawnObserver::enabled, "encounter lifecycle hooks unavailable");
+        if (logging) message(L"Encounter replacement ready: saved choices, natural cycles and suppression.");
         return true;
     } catch (const std::exception& error) {
         active = false;
         RespawnObserver::stop();
+        EncounterRuntime::stop();
         if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
         if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
         if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);
@@ -474,6 +538,7 @@ bool start() {
 void stop() {
     active = false;
     RespawnObserver::stop();
+    EncounterRuntime::stop();
     if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
     if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
     if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);
@@ -487,16 +552,17 @@ public:
     LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.0.0"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
-        lua.register_function("_LWConfigureWildlife", [](const auto& l) {
+        lua.register_function("_LWConfigureReplacementV1", [](const auto& l) {
             // LuaMadeSimple removes each consumed argument; every read is index 1.
-            auto boars = l.get_integer(1); auto wolves = l.get_integer(1); auto logs = l.get_integer(1);
-            LessWildlife::replacementMask = LessWildlife::replacementSettings(boars, wolves);
+            auto boars = l.get_integer(1); auto wolves = l.get_integer(1);
+            auto boarPool = l.get_integer(1); auto wolfPool = l.get_integer(1); auto logs = l.get_integer(1);
+            LessWildlife::EncounterRuntime::configure(boars, wolves, boarPool, wolfPool);
             LessWildlife::logging = logs == 1; return 0;
         });
-        lua.register_function("_LWStartPrototype", [](const auto& l) { l.set_bool(LessWildlife::start()); return 1; });
+        lua.register_function("_LWStartReplacementV1", [](const auto& l) { l.set_bool(LessWildlife::start()); return 1; });
     }
     void on_lua_stop(StringViewType name, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
-        if (name == L"LessWildlife") LessWildlife::replacementMask = 0;
+        if (name == L"LessWildlife") LessWildlife::configurationReady = false;
     }
     ~LessWildlifeMod() override { LessWildlife::stop(); }
 };

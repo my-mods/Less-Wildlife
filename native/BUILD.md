@@ -22,74 +22,66 @@ cmake -E copy build/main.dll package/Data/LessWildlife/dlls/main.dll
 UE4SS.def declares only the required host imports. The DLL exports
 `start_mod` and `uninstall_mod`. It does not bundle UE4SS itself.
 
-The population interception contract checks the complete builder, row-name,
-row-validity and caller instruction ranges, plus the reflected layouts and
-frame-counter signature used by the helper. The appearance repair also checks
-the humanoid initializer, animal coat writer and humanoid appearance reader,
-plus the AI stub and humanoid definition layouts. A changed required contract
-disables replacement while retaining Lua population adjustment. These checks
-do not impose a whole-file hash, version or storefront restriction.
+## Runtime integration
 
-Replacement entries clear their copied animal activity montage arrays before
-the engine generates action points. This uses reflected array allocation,
-copy, comparison and destruction, with the original array backed up for
-rollback. Source entries are retained. The empty array selects the engine's
-montage-free roaming branch; enemy quantities and spawn points are unchanged.
-The contract checks this branch and its dispatch/preparation paths, the montage
-element type and the dynamic point layouts. Already generated activity points
-prevent conversion of that encounter.
+The native helper has seven required hooks: generated population-table construction,
+humanoid appearance initialization, activity binding for suppression, death scheduling,
+respawn eligibility, attempt dispatch and game-clock advancement. Required-hook failure
+removes the partial installation and leaves Lua population adjustment available.
+`_LWConfigureReplacementV1` accepts boar chance, wolf chance, boar pool bitmask,
+wolf pool bitmask and Logging. Lua consumes these in order; each pool has five bits.
 
-`AppearanceRepair.hpp` handles the saved field shared by animal coat variants
-and human appearance IDs. The native initializer hook is restricted to the
-normal bandit definition and the original supported wildlife row names. It
-clears a nonzero animal value only while the human appearance row is unset,
-then invokes normal game initialization once. Initialized human appearances,
-ordinary bandits, shared assets, inventory and unrelated save fields are retained.
-The hook adds no polling or world scans.
+`ReplacementPolicy.hpp` selects once per whole group. `EncounterCycle.hpp` defines
+the cycle rules and a versioned 40-byte record keyed by original area GUID, source
+row and wildlife definition. The ten definition codes follow `WildlifeDefinitions.hpp`;
+reordering them requires migration. Original outcomes are saved too, so changing
+settings or revisiting an area does not generate extra rolls.
 
-Wildlife definition comparisons use package and asset FNames cached at binding,
-with numeric suffixes retained. Encounter validation finishes before allocating
-or importing replacement values. Engine property operations still construct,
-copy and destroy soft references; the cache contains no UObject pointers or
-borrowed property values. The per-area and per-frame limits remain unchanged.
+`DecisionJournal.hpp` persists records in the matching game save's integer FactsDB.
+Two reserved banks, full-identity decoding, checksums, collision probes and a final
+head switch protect against partial updates and occupied names. An invalid committed
+record fails validation. No global sidecar chooses outcomes for unrelated saves.
+`EncounterRuntime.inl` obtains FactsDB through reflected game-instance APIs with checked
+function pointers, fields and parameter layouts. This adapter performs no direct save-file IO.
 
-The prototype exposes independent boar-to-bandit and wolf-to-bandit replacement at 0 or 100 only. `WildlifeDefinitions.hpp` lists exact supported stock definitions, including brown, white and astral wolves. The Lua population matcher uses the same definitions.
-`ReplacementPolicy.hpp` contains the planned percentage/outcome selection
-logic; it is not connected to respawn-cycle persistence yet. Other enemy
-outcomes and suppression are not enabled in this prototype.
+Generated row names, group quantities, locations and respawn policies stay intact.
+Definitions and row AI overrides use engine FProperty allocation, import, copy,
+comparison and destruction. Blood guards receive the hostile human reactions and
+global-bandit faction; other outcomes use their stock profiles. Foreign overrides,
+quest start conditions and scripted/fixed encounters are excluded.
 
-`EncounterCycle.hpp` implements the engine-independent decision lifecycle and
-a 40-byte versioned record format. Restored records keep their outcome despite
-settings changes. Partial refills and forced respawns cannot start a new cycle;
-natural advancement requires confirmed completion and eligibility with no
-remaining members. No spawn stays pending until the game acknowledges actual
-suppression. Invalid identities, records and random draws are rejected.
+`RespawnObserver.inl` also drives saved lifecycle decisions. Completion requires the
+registered dead-member callback with no living members. Only an eligible, unforced
+natural attempt with no remaining members advances the cycle. Travel, restoration,
+partial refills and cleanup attempts retain it. Callback entry/stub pointers are
+borrowed only for their synchronous call; cross-callback records contain owned values.
 
-This decision layer is not connected to the game save or respawn services.
-The adapter must supply verified lifecycle events and persist each record in
-the matching game save before applying it. A successful respawn attempt alone
-does not establish a new cycle. Definition codes in record version 1 refer to
-the current ten-entry stock list; reordering that list requires migration.
+No spawn intercepts the normal activity-binding boundary after registration and
+before actor creation. It verifies the encounter membership, population registry,
+saved record, absent actor and absent activity binding, then calls normal completion
+bookkeeping. The original binding function runs once and rejects the completed stub.
+The game retains its dead-member persistence and next-day queue. No zero quantities,
+live actor destruction, artificial clock advancement or forced respawning are used.
 
-`RespawnObserver.inl` adds optional observations of death scheduling,
-eligibility, respawn attempts and clock advancement. Its four hooks preserve
-all arguments and original return values, call each original exactly once,
-and retain only owned snapshots across callbacks. It never changes queues,
-time, encounters or saved decisions. A successful partial refill or forced
-attempt is not treated as a new natural cycle.
+Replacement rows clear copied animal montage arrays before point generation. For
+later enemy cycles, existing points belonging to that group clear their montage
+through the normal point setter, with backup/readback/rollback. Locations and other
+groups' points remain intact. `AppearanceRepair.hpp` handles the field shared by
+animal coats and human appearance IDs. Normal restoration retains a human choice;
+new cycles reset reused fields before normal randomized humanoid initialization.
 
-`RespawnContract.hpp` validates the observation functions and the scheduling,
-visibility, cleanup and time-dispatch paths they depend on. Reflected service
-layout checks and indexed type identity/deletion checks also apply. Failure
-removes only the optional hooks; the required replacement contract remains
-independent. The observed next-day flag follows a forward change in the game
-clock's day number. Queued entries still need the population visibility check
-and dead-stub cleanup before normal refill processing.
+`NativeContract.hpp`, `RespawnContract.hpp` and `LifecycleContract.hpp` check the
+instruction ranges, call sites and layout-dependent functions actually used.
+Additional reflected field, class, property and native-function checks run at binding.
+These are capability checks, not game-version, storefront or whole-file hash gates.
+No FWeakObjectPtr constructor or serial allocation is used. Retained area identities
+use indexed slots, existing serials and deletion notification, with a 4096-entry
+limit and eight-slot pruning. Tables are bounded to 64 rows, member lists to 128,
+and generated point lists to 4096. Builder work has a 128-entry and soft 2 ms frame
+budget; deferred tables retain their current values and may be revisited normally.
 
-Logging Off bypasses observation reads, timing and formatting. Logging On
-uses a 128-entry session-only cache, at most one eligibility sample per group
-per second, and a shared ceiling of 256 eligibility samples or a soft 2 ms of
-capture work per second. Member snapshots are capped at 128. Group detail
-reports are limited to 12 per ten seconds, with at most one clock summary and
-one aggregate report per ten seconds of activity. These are work bounds,
-not measured game frame-time results.
+Logging Off skips optional diagnostics and timing, while required saved-decision
+processing stays active. Logging On retains the bounded 128-key observation cache,
+one eligibility sample per group per second, and at most 256 samples or soft 2 ms
+of capture per second. Details are capped at 12 per ten seconds with aggregated
+counts/timings. These are work bounds, not measured frame-time results.
