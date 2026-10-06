@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add optional respawn logging for next-day scheduling, visibility delays, cleanup and partial refills.
 - Fix replacement bandits using animal sleeping, sitting and eating poses before standing up.
 - Reduce repeated work when loading wildlife encounters.
 - Fix replacement bandits appearing naked, red, or with an unrelated character's appearance.

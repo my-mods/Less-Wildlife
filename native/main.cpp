@@ -2,6 +2,7 @@
 #include "Transaction.hpp"
 #include "WildlifeDefinitions.hpp"
 #include "AppearanceRepair.hpp"
+#include "RespawnEvidence.hpp"
 #include <Mod/CppUserModBase.hpp>
 #include <LuaMadeSimple/LuaMadeSimple.hpp>
 #include <DynamicOutput/Output.hpp>
@@ -11,6 +12,7 @@
 #include <Unreal/CoreUObject/UObject/UnrealType.hpp>
 #include <Unreal/Engine/UDataTable.hpp>
 #include "NativeContract.hpp"
+#include "RespawnContract.hpp"
 #include <MinHook.h>
 #include <array>
 #include <atomic>
@@ -81,10 +83,12 @@ struct TypeRef {
     }
 };
 std::array<TypeRef, 8> types;
+TypeRef observerType;
 std::atomic_bool listening{};
 struct Listener final : FUObjectDeleteListener {
     void NotifyUObjectDeleted(const UObjectBase*, int32_t index) override {
         for (auto& type : types) if (type.index == index) { type.alive = false; active = false; }
+        if (observerType.index == index) observerType.alive = false;
     }
     void OnUObjectArrayShutdown() override {
         active = false;
@@ -433,6 +437,8 @@ void initializeAppearance(UObject* definition, UObject* stub) {
     }
 }
 
+#include "RespawnObserver.inl"
+
 bool start() {
     if (active) return true;
     if (target || appearanceTarget || failed) return false;
@@ -452,10 +458,12 @@ bool start() {
         active = true;
         require(MH_EnableHook(appearanceTarget) == MH_OK, "appearance initializer hook activation failed");
         require(MH_EnableHook(target) == MH_OK, "population builder hook activation failed");
+        RespawnObserver::start();
         if (logging) message(L"Boar/wolf-to-bandit prototype ready; in-game spawn/save/respawn gate pending.");
         return true;
     } catch (const std::exception& error) {
         active = false;
+        RespawnObserver::stop();
         if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
         if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
         if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);
@@ -465,6 +473,7 @@ bool start() {
 }
 void stop() {
     active = false;
+    RespawnObserver::stop();
     if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
     if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
     if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);

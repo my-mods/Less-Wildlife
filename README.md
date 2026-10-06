@@ -31,11 +31,15 @@ Set Boars to bandits, Wolves to bandits, or both to On and Apply before entering
 
 Only wildlife entries with random spawn locations, an encounter role and next-day respawning are eligible. Quest-controlled encounters, entries with authored AI overrides or start conditions, and fixed scripted spawn points are left alone. Herds and packs retain their existing roaming boundaries. Bandits use their normal equipment, AI and loot, with roaming activities that do not play animal sleeping, sitting or eating animations. Existing animals are not destroyed and replaced after spawning.
 
+These encounters follow the game's next-day respawn schedule. To check a cleared group, defeat every member, leave the area, let the game advance into the next day and return. Dead members still inside the game's population visibility region can delay the respawn. Loading a save or briefly leaving and returning does not itself advance this schedule. Logging can show whether the group is waiting for the next day, visibility clearance or another cleanup attempt.
+
 ## Logging
 
 Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to change it while playing. Without the menu, close the game and set `debugLogging = 1` under `[LessWildlife]` in the mod's `settings.ini`. The file is created on the first launch and is not bundled in the archive.
 
 Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Summaries count encountered and cached areas, inspected entries, changed boar/wolf entries, deferred areas and failures, with the largest callback duration. Replacement messages identify changed encounter rows, their species, reasons for retaining wildlife, and rolled-back changes. Appearance messages count inherited animal coat values cleared before normal bandit appearance initialization. A changed-row message records the table conversion, not confirmation that an actor spawned. Skip examples are limited to two per reason per session, and appearance-repair examples to two per session; summaries are limited to one per ten seconds of activity. Turn Logging Off after troubleshooting.
+
+Respawn messages identify replacement groups by their original area and row, with living and dead member counts. They distinguish next-day scheduling, visibility delays, cleanup, partial refills and attempts after no members survive. An accepted attempt still needs an in-game check that the new group appeared. Repeated identical observations are filtered and detail messages are rate-limited. If the respawn observer cannot validate the required game code or layouts, its diagnostics are unavailable while the existing replacement and population controls remain available.
 
 ## Credits
 

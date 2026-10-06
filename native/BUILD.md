@@ -70,3 +70,26 @@ The adapter must supply verified lifecycle events and persist each record in
 the matching game save before applying it. A successful respawn attempt alone
 does not establish a new cycle. Definition codes in record version 1 refer to
 the current ten-entry stock list; reordering that list requires migration.
+
+`RespawnObserver.inl` adds optional observations of death scheduling,
+eligibility, respawn attempts and clock advancement. Its four hooks preserve
+all arguments and original return values, call each original exactly once,
+and retain only owned snapshots across callbacks. It never changes queues,
+time, encounters or saved decisions. A successful partial refill or forced
+attempt is not treated as a new natural cycle.
+
+`RespawnContract.hpp` validates the observation functions and the scheduling,
+visibility, cleanup and time-dispatch paths they depend on. Reflected service
+layout checks and indexed type identity/deletion checks also apply. Failure
+removes only the optional hooks; the required replacement contract remains
+independent. The observed next-day flag follows a forward change in the game
+clock's day number. Queued entries still need the population visibility check
+and dead-stub cleanup before normal refill processing.
+
+Logging Off bypasses observation reads, timing and formatting. Logging On
+uses a 128-entry session-only cache, at most one eligibility sample per group
+per second, and a shared ceiling of 256 eligibility samples or a soft 2 ms of
+capture work per second. Member snapshots are capped at 128. Group detail
+reports are limited to 12 per ten seconds, with at most one clock summary and
+one aggregate report per ten seconds of activity. These are work bounds,
+not measured game frame-time results.
