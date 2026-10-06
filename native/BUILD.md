@@ -30,6 +30,15 @@ plus the AI stub and humanoid definition layouts. A changed required contract
 disables replacement while retaining Lua population adjustment. These checks
 do not impose a whole-file hash, version or storefront restriction.
 
+Replacement entries clear their copied animal activity montage arrays before
+the engine generates action points. This uses reflected array allocation,
+copy, comparison and destruction, with the original array backed up for
+rollback. Source entries are retained. The empty array selects the engine's
+montage-free roaming branch; enemy quantities and spawn points are unchanged.
+The contract checks this branch and its dispatch/preparation paths, the montage
+element type and the dynamic point layouts. Already generated activity points
+prevent conversion of that encounter.
+
 `AppearanceRepair.hpp` handles the saved field shared by animal coat variants
 and human appearance IDs. The native initializer hook is restricted to the
 normal bandit definition and the original supported wildlife row names. It

@@ -58,3 +58,7 @@ EXPORTS
     ?render_tab@CppUserModBase@RC@@UEAAXXZ
     ?send@Output@RC@@YAXV?$basic_string_view@_WU?$char_traits@_W@std@@@std@@@Z
     ?set_bool@Lua@LuaMadeSimple@RC@@QEBAX_N@Z
+    ?GetInner@FArrayProperty@Unreal@RC@@QEAAAEAPEAVFProperty@23@XZ
+    ?GetInner@FArrayProperty@Unreal@RC@@QEBAAEAPEBVFProperty@23@XZ
+    ?Identical@FProperty@Unreal@RC@@QEAA_NPEBX0I@Z
+    ?MemberOffsets@FArrayProperty@Unreal@RC@@2V?$unordered_map@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HU?$hash@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@2@U?$equal_to@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@H@std@@@2@@std@@A

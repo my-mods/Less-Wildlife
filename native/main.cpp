@@ -110,6 +110,7 @@ FProperty* field(UStruct* owner, const wchar_t* name, int offset, int size, cons
     return property;
 }
 FProperty* definitionProperty{};
+FArrayProperty* montageProperty{};
 FBoolProperty* hostileProperty{};
 UStruct* entryType{};
 UStruct* rowType{};
@@ -168,6 +169,8 @@ void bindSchema() {
     field(areaType, L"StartConditions", 0x350, 16, L"ArrayProperty");
     field(areaType, L"ActiveEntries", 0x360, 16, L"ArrayProperty");
     field(areaType, L"GeneratedDataTable", 0x370, 8, L"ObjectProperty");
+    field(areaType, L"DynamicSpawnPoints", 0x388, 16, L"ArrayProperty");
+    field(areaType, L"DynamicActionPoints", 0x398, 16, L"ArrayProperty");
     field(entryType, L"PawnDefinition", 0, 40, L"SoftClassProperty");
     field(entryType, L"AIDefinition", 0x28, 8, L"ClassProperty");
     field(entryType, L"AIReactions", 0x30, 8, L"ClassProperty");
@@ -179,6 +182,11 @@ void bindSchema() {
     field(entryType, L"Behavior", 0x64, 1, L"EnumProperty");
     field(entryType, L"Quantity", 0x68, 4, L"UInt32Property");
     field(entryType, L"MaxQuantity", 0x6c, 4, L"UInt32Property");
+    montageProperty = static_cast<FArrayProperty*>(field(entryType, L"Montages", 0xb0, 16, L"ArrayProperty"));
+    require(FArrayProperty::MemberOffsets.at(L"Inner") == 0x78, "montage array property layout changed");
+    auto montageInner = montageProperty->GetInner();
+    require(montageInner && montageInner->GetSize() == 40 && montageInner->GetClass().GetName() == L"SoftObjectProperty",
+            "montage array element layout changed");
     field(entryType, L"PopulationExtensionConfig", 0xc8, 16, L"StructProperty");
     definitionProperty = field(rowType, L"PawnDefinition", 0x30, 40, L"SoftClassProperty");
     field(rowType, L"PawnClass", 8, 40, L"SoftClassProperty");
@@ -226,22 +234,36 @@ struct Value {
     Value(const Value&) = delete; Value& operator=(const Value&) = delete;
 };
 struct Operation {
-    void* destination; void* activeEntry; Value backup; const Value* replacement; bool wasHostile;
-    Operation(void* row, void* entry, const Value& next)
-        : destination(static_cast<unsigned char*>(row) + 0x30), activeEntry(entry), backup(definitionProperty), replacement(&next),
+    void* destination; void* activeEntry; Value backup; Value montageBackup;
+    const Value* replacement; const Value* emptyMontages; bool wasHostile;
+    Operation(void* row, void* entry, const Value& next, const Value& noMontages)
+        : destination(static_cast<unsigned char*>(row) + 0x30), activeEntry(entry), backup(definitionProperty), montageBackup(montageProperty),
+          replacement(&next), emptyMontages(&noMontages),
           wasHostile(hostileProperty->GetPropertyValue(static_cast<unsigned char*>(entry) + 0x60)) {
         definitionProperty->CopyCompleteValue(backup.data, destination);
+        montageProperty->CopyCompleteValue(montageBackup.data, static_cast<unsigned char*>(activeEntry) + 0xb0);
     }
     void apply() {
         definitionProperty->CopyCompleteValue(destination, replacement->data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, true);
+        // RandomPoints entries can still supply animal sleeping/eating/sitting
+        // montages. Their dynamic activity points are built after this callback.
+        // An empty list uses the engine's normal montage-free roaming points.
+        montageProperty->CopyCompleteValue(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data);
     }
-    bool readbackMatches() { return definitionKey(destination) == banditKey && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60); }
+    bool readbackMatches() {
+        return definitionKey(destination) == banditKey && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60)
+            && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data);
+    }
     void restore() {
         definitionProperty->CopyCompleteValue(destination, backup.data);
         hostileProperty->SetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60, wasHostile);
+        montageProperty->CopyCompleteValue(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data);
     }
-    bool restored() { return definitionKey(destination) == definitionKey(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile; }
+    bool restored() {
+        return definitionKey(destination) == definitionKey(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile
+            && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data);
+    }
 };
 // Stable addresses and RAII engine values; no borrowed row survives this call.
 struct OperationList {
@@ -265,6 +287,8 @@ void transform(UObject* area) {
     auto conditions = read<Array>(area, 0x350);
     require(arrayValid(conditions, 64), "population start condition layout");
     if (conditions.count) { skip(area, SkipReason::Conditions); return; }
+    require(read<Array>(area, 0x388).count == 0 && read<Array>(area, 0x398).count == 0,
+            "population activity points already materialized");
     // Guard areas also bound ordinary roaming packs. Preserve the game's
     // boundary and registration data; attached scripted spawn points are
     // excluded by the entry behavior/role/respawn checks below.
@@ -296,6 +320,7 @@ void transform(UObject* area) {
         auto reason = entryReason(source);
         if (reason == SkipReason::None) reason = entryReason(current);
         if (reason != SkipReason::None) { skip(area, reason); return; }
+        require(arrayValid(read<Array>(current, 0xb0), 64), "activity montage list limit or layout");
         require(definitionKey(row + 0x30) == sourcePath && read<uint8_t>(row, 0x90) == 3 && read<uint8_t>(row, 0xc0) == 1,
                 "generated wildlife row changed externally");
         require(read<uint64_t>(row, 0x10) == 0 && read<uint64_t>(row, 0x58) == 0 && read<uint64_t>(row, 0x60) == 0
@@ -305,18 +330,19 @@ void transform(UObject* area) {
     }
     if (!plannedCount) return;
     Value replacement(definitionProperty);
+    Value noMontages(montageProperty);
     auto end = definitionProperty->ImportText_Direct(bandit, replacement.data, area, 0, nullptr);
     require(end && !*end && definitionKey(replacement.data) == banditKey, "bandit soft reference import failed");
     OperationList operations;
     operations.values.reserve(plannedCount);
-    for (size_t i = 0; i < plannedCount; ++i) operations.values.push_back(std::make_unique<Operation>(planned[i].row, planned[i].entry, replacement));
+    for (size_t i = 0; i < plannedCount; ++i) operations.values.push_back(std::make_unique<Operation>(planned[i].row, planned[i].entry, replacement, noMontages));
     auto result = commit(operations);
     if (result == TransactionResult::RollbackFailed) { failed = true; warning(L"Replacement disabled: rollback could not be verified. Population controls remain available."); }
     else if (result == TransactionResult::RolledBack) { if (logging) ++stats.rolledBack; warning(L"Replacement rolled back; original encounter retained."); }
     else {
         if (logging) ++stats.transformed;
         if (logging) message(L"Prototype wildlife -> bandit: " + area->GetFullName() + L"; boar rows=" + std::to_wstring(boarRows)
-            + L", wolf rows=" + std::to_wstring(wolfRows) + L"; original row keys/counts/respawn retained.");
+            + L", wolf rows=" + std::to_wstring(wolfRows) + L"; animal activity montages removed; original row keys/counts/respawn retained.");
     }
 }
 
