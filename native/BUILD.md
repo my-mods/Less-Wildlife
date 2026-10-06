@@ -48,6 +48,13 @@ Fact methods are resolved by name on the verified FactsDB default object, avoidi
 function-path punctuation assumptions. Missing bindings report their exact identity.
 This adapter performs no direct save-file IO.
 
+`RowIdentityCache.hpp` keeps at most 1,024 parsed FName identities (including
+non-wildlife names), using the full comparison-index/number pair and replacing
+one slot on collisions. Definition binding clears it. Area GUIDs, saved decisions
+and engine pointers are never cached there. Original and No spawn table outcomes
+retain journal processing while avoiding unused FProperty preparation. Repeated
+area registrations reuse live indexed handles and retain deletion invalidation.
+
 Generated row names, group quantities, locations and respawn policies stay intact.
 Definitions and row AI overrides use engine FProperty allocation, import, copy,
 comparison and destruction. Regular guards and blood guards receive the hostile human reactions and

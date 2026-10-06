@@ -100,6 +100,7 @@ bool measure(UObject* service, void* entry, RespawnEvent event, RespawnSnapshot&
     return result;
 }
 void queued(UObject* service, UObject* stub) {
+    HookTimer timing(3);
     RespawnSnapshot sample{}; bool observed{};
     if (observing(service) && stub && stub->IsA(stubType)) {
         auto row = read<void*>(stub, 0x60);
@@ -112,6 +113,7 @@ void queued(UObject* service, UObject* stub) {
     if (observed) reportSafely(sample, RespawnEvent::Queued, RespawnEvidence::NextDayQueued);
 }
 bool eligible(UObject* service, void* entry) {
+    HookTimer timing(4);
     RespawnSnapshot sample{};
     const bool observed = measure(service, entry, RespawnEvent::Eligibility, sample);
     const bool populationAvailable = observed && read<void*>(service, 0x48);
@@ -121,6 +123,7 @@ bool eligible(UObject* service, void* entry) {
     return result;
 }
 bool attempt(UObject* service, void* entry, void* context, bool forced) {
+    HookTimer timing(5);
     RespawnSnapshot sample{};
     const bool observed = measure(service, entry, RespawnEvent::Attempt, sample);
     EncounterRuntime::AttemptScope scope;
@@ -145,6 +148,7 @@ bool attempt(UObject* service, void* entry, void* context, bool forced) {
     return result;
 }
 void clockAdvance(UObject* service, int64_t hours, bool nextDay, bool contextFlag) {
+    HookTimer timing(6);
     const bool observed = observing(service);
     const int pending = observed ? read<int32_t>(service, 0xe0) : 0;
     originalClock(service, hours, nextDay, contextFlag);

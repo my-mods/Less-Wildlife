@@ -1,5 +1,6 @@
 #include "ReplacementPolicy.hpp"
 #include "DecisionJournal.hpp"
+#include "RowIdentityCache.hpp"
 #include <random>
 #include "Transaction.hpp"
 #include "WildlifeDefinitions.hpp"
@@ -52,6 +53,24 @@ UObject* clockOwner{}; UFunction* clockFunction{};
 
 void message(const std::wstring& value) { RC::Output::send(L"[Less Wildlife native] " + value + L"\n"); }
 void warning(const wchar_t* value) { if (warningCount.fetch_add(1) < 8) message(value); }
+struct HookTimer {
+    struct Sample { uint64_t count{},micros{},maximum{}; };
+    inline static std::array<Sample,7> samples{};
+    inline static uint64_t reported{};
+    unsigned index;bool enabled;
+    std::chrono::steady_clock::time_point start;
+    explicit HookTimer(unsigned slot):index(slot),enabled(logging&&GetCurrentThreadId()==gameThread),start(enabled?std::chrono::steady_clock::now():std::chrono::steady_clock::time_point{}){}
+    ~HookTimer() noexcept {
+        if(!enabled)return;
+        auto us=static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-start).count());
+        auto& sample=samples[index];++sample.count;sample.micros+=us;sample.maximum=std::max(sample.maximum,us);
+        const auto now=GetTickCount64();if(now-reported<10000)return;reported=now;
+        try {
+            constexpr const wchar_t* names[]={L"table",L"appearance",L"activity",L"queue",L"eligibility",L"attempt",L"clock"};
+            for(size_t i=0;i<samples.size();++i){const auto& s=samples[i];if(s.count)message(std::wstring(L"Hook elapsed (includes original, nested): ")+names[i]+L", calls="+std::to_wstring(s.count)+L", us="+std::to_wstring(s.micros)+L", max us="+std::to_wstring(s.maximum));}
+        }catch(...){}
+    }
+};
 void require(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
 void skip(UObject* area, SkipReason reason) {
     if (!logging) return;
@@ -138,6 +157,8 @@ struct DefinitionKey {
     bool operator==(const DefinitionKey& other) const { return package == other.package && asset == other.asset; }
 };
 std::array<DefinitionKey, wildlifeDefinitions.size()> wildlifeKeys;
+std::array<std::wstring, wildlifeDefinitions.size()> wildlifeAssetNames;
+RowIdentityCache rowIdentities;
 DefinitionKey banditKey;
 constexpr const wchar_t* enemies[] = {bandit,
  L"/Game/_Dawnwalker/Combat/Enemies/BloodSlave/NPCDef_BloodSlave_Base.NPCDef_BloodSlave_Base_C",
@@ -152,7 +173,11 @@ void bindDefinitionKeys() {
         require(dot != std::wstring_view::npos, "invalid definition path");
         return DefinitionKey{FName(std::wstring(path.substr(0, dot)).c_str()), FName(std::wstring(path.substr(dot + 1)).c_str())};
     };
-    for (size_t i = 0; i < wildlifeKeys.size(); ++i) wildlifeKeys[i] = key(wildlifeDefinitions[i].path);
+    rowIdentities.clear();
+    for (size_t i = 0; i < wildlifeKeys.size(); ++i) {
+        wildlifeKeys[i] = key(wildlifeDefinitions[i].path);
+        wildlifeAssetNames[i] = wildlifeKeys[i].asset.ToString();
+    }
     banditKey = key(bandit);
     for (size_t i = 0; i < enemyKeys.size(); ++i) enemyKeys[i] = key(enemies[i]);
 }
@@ -373,7 +398,7 @@ void transform(UObject* area) {
         std::unique_ptr<Value> reactions, faction;
     };
     std::vector<Prepared> prepared; prepared.reserve(plannedCount);
-    Value noMontages(montageProperty);
+    std::unique_ptr<Value> noMontages;
     OperationList operations; operations.values.reserve(plannedCount);
     for (size_t i = 0; i < plannedCount; ++i) {
         auto& plan = planned[i];
@@ -382,16 +407,23 @@ void transform(UObject* area) {
         // Adopt already converted cached rows from the earlier bandit helper.
         if (!saved.decision && definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == banditKey)
             decision = {plan.key, 0, Outcome::Bandit, CyclePhase::Active};
+        // Both outcomes retain the original row profile. Their decisions still
+        // use the same journal, but need no imported profile or engine values.
+        if (decision.outcome == Outcome::Original || decision.outcome == Outcome::None) {
+            prepared.push_back({std::move(saved), decision, {}, {}, {}});
+            continue;
+        }
         auto replacement = std::make_unique<Value>(definitionProperty);
         auto reactions = std::make_unique<Value>(reactionsProperty), faction = std::make_unique<Value>(factionProperty);
         auto end = definitionProperty->ImportText_Direct(EncounterRuntime::path(decision), replacement->data, area, 0, nullptr);
         require(end && !*end && definitionKey(replacement->data) == EncounterRuntime::keyFor(decision), "outcome soft reference import failed");
         EncounterRuntime::prepareHostility(decision, *reactions, *faction, area);
-        if (decision.outcome != Outcome::Original && decision.outcome != Outcome::None) {
-            if (pointsBuilt) {
-                require(definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == EncounterRuntime::keyFor(decision),
-                    "cached encounter changed before registration");
-            } else operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, noMontages, *reactions, *faction));
+        if (pointsBuilt) {
+            require(definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == EncounterRuntime::keyFor(decision),
+                "cached encounter changed before registration");
+        } else {
+            if (!noMontages) noMontages = std::make_unique<Value>(montageProperty);
+            operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, *noMontages, *reactions, *faction));
         }
         prepared.push_back({std::move(saved), decision, std::move(replacement), std::move(reactions), std::move(faction)});
     }
@@ -420,6 +452,7 @@ void transform(UObject* area) {
 }
 
 void builder(UObject* area) {
+    HookTimer timing(0);
     // Always run the game's builder exactly once. It also handles its cached
     // table. Cached rows reuse saved decisions and never trigger another roll.
     const bool participate = active && configurationReady && !failed && GetCurrentThreadId() == gameThread;
@@ -470,6 +503,7 @@ void builder(UObject* area) {
 
 struct AppearanceStats { uint64_t checked{}, repaired{}, equipment{}, failures{}, micros{}, maximum{}, reported{}; } appearanceStats;
 void initializeAppearance(UObject* definition, UObject* stub) {
+    HookTimer timing(1);
     bool repaired = false, measured = false;
     auto started = std::chrono::steady_clock::time_point{};
     try {

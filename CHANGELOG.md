@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reduce repeated work when revisiting wildlife areas and leaving groups unchanged.
+- Add optional diagnostics to help investigate encounter-related stutters.
 - Add Regular guards as a separate hostile replacement choice for boars and wolves.
 - Restore missing weapons on replacement bandits and blood guards.
 - Give replacement blood guards their hostile behavior from their first spawn.

@@ -59,3 +59,11 @@ Create `Less-Wildlife.zip` with the contents of `package/` at its root,
 plus `LICENSES/`, `Nexus/`, `LICENSE.txt`, `CHANGELOG.md`, `RELEASE-NOTES.md`
 and `UPSTREAM.json`. The root must contain `Data`, `mod.manifest` and
 `README.txt`; exclude personal settings, build directories and development tools.
+
+## Performance and diagnostics
+
+Repeated encounter-name checks reuse a bounded cache of parsed names. Groups that stay as wildlife or choose No spawn skip unused replacement-profile preparation. Existing area handles are reused. Saved choices, quest exclusions, spawn probabilities and respawn rules retain their normal behavior.
+
+Logging includes aggregate elapsed times for table building, appearance initialization, activity binding, encounter queueing, eligibility, attempts and clock updates. These hook measurements include the original game call and may be nested; they are not isolated mod overhead or frame times. Logging Off skips this optional instrumentation. Saved encounter choices, quest exclusions and spawn probabilities are unchanged.
+
+Enable the final **Logging** setting for diagnostics in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Leave it Off for normal play. Timings and offline checks do not establish an in-game frame-rate improvement.

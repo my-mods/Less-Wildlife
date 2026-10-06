@@ -24,8 +24,16 @@ void invalidateArea(int32_t index) {
     if (auto found = areaByIndex.find(index); found != areaByIndex.end()) areaSlots[found->second]->object.alive = false;
 }
 void rememberArea(UObject* area) {
+    const auto guid = read<std::array<uint32_t, 4>>(area, 0x1e0);
+    {
+        std::lock_guard guard(areaMutex);
+        if (auto found = areaByGuid.find(guid); found != areaByGuid.end()) {
+            const auto& existing = areaSlots[found->second]->object;
+            if (existing.alive && existing.object == area) return;
+        }
+    }
     auto item = std::make_shared<AreaHandle>(); item->object.bind(area);
-    item->guid = read<std::array<uint32_t, 4>>(area, 0x1e0);
+    item->guid = guid;
     std::lock_guard guard(areaMutex);
     size_t slot = areaSlots.size();
     if (auto found = areaByGuid.find(item->guid); found != areaByGuid.end()) {
@@ -88,19 +96,23 @@ DefinitionKey keyFor(const EncounterDecision& decision) {
     return outcome >= 1 && outcome <= 4 ? enemyKeys[outcome - 1] : wildlifeKeys[decision.key.definition];
 }
 std::optional<EncounterKey> identify(const std::array<uint32_t, 4>& area, FName row) {
-    auto name = row.ToString(); auto separator = name.find(L'_');
-    if (separator == std::wstring::npos || !separator || separator > 2) return {};
-    unsigned index{};
-    for (size_t i = 0; i < separator; ++i) {
-        if (name[i] < L'0' || name[i] > L'9') return {};
-        index = index * 10 + name[i] - L'0';
-    }
-    for (uint8_t d = 0; d < wildlifeKeys.size(); ++d) {
-        if (name.substr(separator + 1) != wildlifeKeys[d].asset.ToString()) continue;
-        EncounterKey result{area, static_cast<uint8_t>(index), d};
-        if (index < 64 && valid(result)) return result;
-    }
-    return {};
+    auto identity = rowIdentities.get(read<uint64_t>(&row, 0), [&]() -> std::optional<RowIdentity> {
+        auto name = row.ToString(); auto separator = name.find(L'_');
+        if (separator == std::wstring::npos || !separator || separator > 2) return {};
+        unsigned index{};
+        for (size_t i = 0; i < separator; ++i) {
+            if (name[i] < L'0' || name[i] > L'9') return {};
+            index = index * 10 + name[i] - L'0';
+        }
+        if (index >= 64) return {};
+        const auto asset = std::wstring_view(name).substr(separator + 1);
+        for (uint8_t d = 0; d < wildlifeAssetNames.size(); ++d)
+            if (asset == wildlifeAssetNames[d]) return RowIdentity{static_cast<uint8_t>(index), d};
+        return {};
+    });
+    if (!identity) return {};
+    EncounterKey result{area, identity->row, identity->definition};
+    return valid(result) ? std::optional{result} : std::nullopt;
 }
 void noteFresh(const EncounterKey& key) {
     if (auto area = findArea(key)) {
@@ -432,6 +444,7 @@ unsigned char* registryRecord(UObject* population, uint32_t id) {
     throw std::runtime_error("new encounter stub is not registered");
 }
 void bindActivity(UObject* stub, int16_t phase, void* context, void* flags) {
+    HookTimer timing(2);
     if (active && configurationReady && !failed && GetCurrentThreadId() == gameThread && attemptScope && attemptScope->decision
         && attemptScope->decision->outcome == Outcome::None) {
         try {
