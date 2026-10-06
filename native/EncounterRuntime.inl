@@ -56,7 +56,7 @@ template<class T> T engine(uint32_t rva) {
 }
 unsigned uniform(unsigned bound) { return std::uniform_int_distribution<unsigned>(0, bound - 1)(random); }
 void configure(int64_t boars, int64_t wolves, int64_t boarPool, int64_t wolfPool) {
-    if (boars < 0 || boars > 100 || wolves < 0 || wolves > 100 || boarPool < 0 || boarPool > 31 || wolfPool < 0 || wolfPool > 31) {
+    if (boars < 0 || boars > 100 || wolves < 0 || wolves > 100 || boarPool < 0 || boarPool > 63 || wolfPool < 0 || wolfPool > 63) {
         replacementOptions = 0; replacementMask = 0; configurationReady = false; return;
     }
     replacementOptions = uint64_t(boars) | (uint64_t(wolves) << 8) | (uint64_t(boarPool) << 16) | (uint64_t(wolfPool) << 24);
@@ -67,8 +67,8 @@ Options options(uint8_t definition) {
     const auto settings = replacementOptions.load();
     const bool wolf = wildlifeDefinitions.at(definition).species == Species::Wolf;
     Options result; result.chance = (settings >> (wolf ? 8 : 0)) & 255;
-    const auto mask = (settings >> (wolf ? 24 : 16)) & 31;
-    for (unsigned i = 0; i < 5; ++i) result.allowed[i] = (mask & (uint64_t{1} << i)) != 0;
+    const auto mask = (settings >> (wolf ? 24 : 16)) & 63;
+    for (unsigned i = 0; i < result.allowed.size(); ++i) result.allowed[i] = (mask & (uint64_t{1} << i)) != 0;
     return result;
 }
 bool enemyDefinition(UObject* definition) {
@@ -78,10 +78,12 @@ bool enemyDefinition(UObject* definition) {
     return false;
 }
 const wchar_t* path(const EncounterDecision& decision) {
+    if (decision.outcome == Outcome::Guard) return enemies[4];
     const auto outcome = static_cast<unsigned>(decision.outcome);
     return outcome >= 1 && outcome <= 4 ? enemies[outcome - 1] : wildlifeDefinitions[decision.key.definition].path.data();
 }
 DefinitionKey keyFor(const EncounterDecision& decision) {
+    if (decision.outcome == Outcome::Guard) return enemyKeys[4];
     const auto outcome = static_cast<unsigned>(decision.outcome);
     return outcome >= 1 && outcome <= 4 ? enemyKeys[outcome - 1] : wildlifeKeys[decision.key.definition];
 }
@@ -239,7 +241,7 @@ bool ownedProfile(const void* row) {
         && (!read<uint64_t>(row, 0x68) || read<FName>(row, 0x68) == hostileFaction);
 }
 void prepareHostility(const EncounterDecision& decision, Value& reactions, Value& faction, UObject* owner) {
-    if (decision.outcome != Outcome::BloodGuard) return;
+    if (!usesHostileHumanProfile(decision.outcome)) return;
     // Prepare the same full profile before initial registration and respawn.
     // Keep the guard's stock combat AI, weapons, abilities and appearance.
     auto end = reactionsProperty->ImportText_Direct(hostileReactions, reactions.data, owner, 0, nullptr);
@@ -257,7 +259,7 @@ void setDefinition(void* row, const EncounterDecision& decision, UObject* owner)
         && ownedProfile(row), "encounter profile changed externally");
     if (definitionKey(destination) == keyFor(decision)) {
         auto existing = read<UClass*>(reactions, 0);
-        if (decision.outcome == Outcome::BloodGuard
+        if (usesHostileHumanProfile(decision.outcome)
             ? existing && existing->GetPathName() == hostileReactions && read<FName>(faction, 0) == hostileFaction
             : !existing && read<uint64_t>(faction, 0) == 0) return;
     }

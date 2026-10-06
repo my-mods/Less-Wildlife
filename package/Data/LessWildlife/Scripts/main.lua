@@ -20,16 +20,17 @@ local system,frameFn,frame,frameEntries,frameTime
 local debugLogging,populationPercent=false,100
 local reduceBoars,reduceWolves=true,true
 local boarReplacementChance,wolfReplacementChance,settingsReady=0,0,false
-local pools={boar=15,wolf=15}
+local pools={boar=47,wolf=47}
 local outcomeValues={}
-local outcomeNames={'Bandits','BloodGuards','Vidmo','Kobolds','NoSpawn'}
+-- Append new pool bits so existing native settings and saved outcome IDs agree.
+local outcomeNames={'Bandits','BloodGuards','Vidmo','Kobolds','NoSpawn','Guards'}
 local function updatePools(values)
  for _,animal in ipairs({'boar','wolf'})do
   local mask=0
   for i,name in ipairs(outcomeNames)do
    local key=animal..name;local v=values[key]
    if v==0 or v==1 then outcomeValues[key]=v end
-   if outcomeValues[key]==nil then outcomeValues[key]=i<5 and 1 or 0 end
+   if outcomeValues[key]==nil then outcomeValues[key]=name~='NoSpawn' and 1 or 0 end
    if outcomeValues[key]==1 then mask=mask+2^(i-1) end
   end
   pools[animal]=mask

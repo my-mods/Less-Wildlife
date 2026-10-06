@@ -56,7 +56,7 @@ bool prepare(UObject* definition, UObject* stub) {
     auto saved = DecisionJournal::locate(store, *key);
     if (!saved.decision || saved.decision->phase != CyclePhase::Active) return false;
     const auto& choice = *saved.decision;
-    if (choice.outcome != Outcome::Bandit && choice.outcome != Outcome::BloodGuard) return false;
+    if (choice.outcome != Outcome::Bandit && !usesHostileHumanProfile(choice.outcome)) return false;
     require(definition->GetClassPrivate()->GetPathName() == path(choice)
         && definitionKey(static_cast<unsigned char*>(read<void*>(entry, 0x10)) + 0x30) == keyFor(choice), "equipment replacement identity");
     const auto member = read<uint32_t>(stub, 0x40); require(member != 0, "equipment member identity");
@@ -73,7 +73,7 @@ bool prepare(UObject* definition, UObject* stub) {
     require(equipment.Num() >= 0 && equipment.Num() <= 8 && equipment.GetMaxIndex() <= 16, "stock equipment bounds");
     std::optional<uint8_t> slot;
     for (auto& item : equipment) if (item.Value) {
-        // These two exact definitions supply one primary weapon. Reject a
+        // These exact human definitions supply one primary weapon. Reject a
         // changed multi-item default rather than duplicating existing gear.
         require(!slot, "stock equipment requires multiple items"); slot = item.Key;
     }

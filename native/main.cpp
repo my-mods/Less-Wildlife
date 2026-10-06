@@ -142,8 +142,9 @@ DefinitionKey banditKey;
 constexpr const wchar_t* enemies[] = {bandit,
  L"/Game/_Dawnwalker/Combat/Enemies/BloodSlave/NPCDef_BloodSlave_Base.NPCDef_BloodSlave_Base_C",
  L"/Game/_Dawnwalker/Combat/Enemies/Vidmo/NPCDef_Vidmo_Base.NPCDef_Vidmo_Base_C",
- L"/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Kobold/NPCDef_Kobold_Forest_Combat.NPCDef_Kobold_Forest_Combat_C"};
-std::array<DefinitionKey, 4> enemyKeys;
+ L"/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Kobold/NPCDef_Kobold_Forest_Combat.NPCDef_Kobold_Forest_Combat_C",
+ L"/Game/_Dawnwalker/Combat/Enemies/HumanEnemies/HumanSwordBasic/NPCDef_NewLocomotion_EnemyHuman_Normal.NPCDef_NewLocomotion_EnemyHuman_Normal_C"};
+std::array<DefinitionKey, std::size(enemies)> enemyKeys;
 
 void bindDefinitionKeys() {
     auto key = [](std::wstring_view path) {

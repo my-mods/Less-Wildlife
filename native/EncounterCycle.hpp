@@ -31,7 +31,7 @@ inline bool valid(const EncounterKey& key) {
     return (key.area[0] || key.area[1] || key.area[2] || key.area[3]) && key.row < 64 && key.definition < 10;
 }
 inline bool valid(const EncounterDecision& decision) {
-    return valid(decision.key) && static_cast<unsigned>(decision.outcome) <= static_cast<unsigned>(Outcome::None)
+    return valid(decision.key) && static_cast<unsigned>(decision.outcome) <= static_cast<unsigned>(Outcome::Guard)
         && static_cast<unsigned>(decision.phase) <= static_cast<unsigned>(CyclePhase::Completed)
         && (decision.outcome == Outcome::None
             ? decision.phase != CyclePhase::Active : decision.phase != CyclePhase::SuppressionPending);

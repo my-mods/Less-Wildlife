@@ -2,13 +2,13 @@
 
 Adjust boar herds and wolf packs from [b]10% to 200%[/b] of their original population, with independent switches for each species. [b]100% is normal and the default[/b]; 200% doubles it.
 
-Make woodland encounters less predictable with separate [b]0–100% replacement chances[/b] for boars and wolves. Enable [b]Bandits, Blood guards, Vidmo, Kobolds and No spawn[/b] independently. One roll chooses the result for the whole group, equally among its enabled outcomes.
+Make woodland encounters less predictable with separate [b]0–100% replacement chances[/b] for boars and wolves. Enable [b]Bandits, Regular guards, Blood guards, Vidmo, Kobolds and No spawn[/b] independently. One roll chooses the result for the whole group, equally among its enabled outcomes.
 
-At 60% with Bandits and Kobolds enabled, about 40% of groups remain animals, 30% become bandits and 30% become kobolds. An empty pool keeps the animals. Replacement chances default to 0%; the four enemy choices default to On and No spawn defaults to Off.
+At 60% with Bandits and Kobolds enabled, about 40% of groups remain animals, 30% become bandits and 30% become kobolds. An empty pool keeps the animals. Replacement chances default to 0%; the five enemy choices default to On and No spawn defaults to Off.
 
 Results stay with the game save through travel and reloading. The next natural respawn rolls again using the current settings. Partial kills do not reroll surviving members. [b]No spawn[/b] leaves the encounter empty for its current cycle while retaining its later respawn opportunity.
 
-Supported ordinary wolves include brown, white and astral variants. Quest-gated encounters, quest-specific animals, bosses, summons, authored AI overrides and fixed scripted encounters are excluded. Replacement enemies are hostile, retain the selected group size and use their own combat AI, equipment and loot. Replacement bandits and blood guards recover missing weapons once, without refilling equipment on every reload. Roaming activities avoid inherited animal poses.
+Supported ordinary wolves include brown, white and astral variants. Quest-gated encounters, quest-specific animals, bosses, summons, authored AI overrides and fixed scripted encounters are excluded. Replacement enemies are hostile, retain the selected group size and use their own combat AI, equipment and loot. Replacement bandits, regular guards and blood guards recover missing weapons once, without refilling equipment on every reload. Roaming activities avoid inherited animal poses.
 
 [size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
 
@@ -18,7 +18,7 @@ Open [b]Mod Settings > Less Wildlife[/b], choose your settings and press Apply.
 [*][b]Population:[/b] 10% to 200% in 1% steps. Rounded to the nearest animal, with at least one for a positive population. Default: 100%.
 [*][b]Adjust boars / Adjust wolves:[/b] Independent population adjustments. Off restores original values still controlled by this mod on later encounters. Default: On.
 [*][b]Boars / Wolves — Replacement chance:[/b] 0% to 100%. Changes apply to new groups and natural respawn cycles. Default: 0%.
-[*][b]Bandits / Blood guards / Vidmo / Kobolds:[/b] Each On toggle includes that enemy in its species' pool. Default: On.
+[*][b]Bandits / Regular guards / Blood guards / Vidmo / Kobolds:[/b] Each On toggle includes that enemy in its species' pool. Default: On.
 [*][b]No spawn:[/b] Include an empty encounter among the outcomes. Default: Off.
 [*][b]Logging:[/b] Optional counts, timings, saved decisions and respawn details in UE4SS.log. Default: Off.
 [/list]
@@ -27,7 +27,7 @@ Population and replacement settings are independent. Already spawned creatures a
 
 [size=3][b]Manual configuration[/b][/size]
 
-Launch once to create [b]Dawnwalker/Binaries/Win64/ue4ss/Mods/LessWildlife/settings.ini[/b], then close the game before editing it. Use 10–200 for populationPercent, 0–100 for boarReplacementChance and wolfReplacementChance, and 0/1 for the switches. Each species has Bandits, BloodGuards, Vidmo, Kobolds and NoSpawn keys prefixed with boar or wolf. Missing keys are added at startup while valid preferences are preserved.
+Launch once to create [b]Dawnwalker/Binaries/Win64/ue4ss/Mods/LessWildlife/settings.ini[/b], then close the game before editing it. Use 10–200 for populationPercent, 0–100 for boarReplacementChance and wolfReplacementChance, and 0/1 for the switches. Each species has Bandits, Guards, BloodGuards, Vidmo, Kobolds and NoSpawn keys prefixed with boar or wolf. Missing keys are added at startup while valid preferences are preserved.
 
 For next-day respawn, defeat every group member, leave the area, advance into the next game day and return. The game's visibility clearance and corpse cleanup can delay it. Travel or reloading alone does not reroll the group.
 

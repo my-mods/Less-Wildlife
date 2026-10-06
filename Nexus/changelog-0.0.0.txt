@@ -1,3 +1,4 @@
+- Add Regular guards as a separate hostile replacement choice for boars and wolves.
 - Restore missing weapons on replacement bandits and blood guards.
 - Give replacement blood guards their hostile behavior from their first spawn.
 - Fix enemy replacement failing to start and leaving boars and wolves unchanged despite enabled settings.

@@ -1,1 +1,1 @@
-Set boar and wolf populations from 10% to 200%. Give each species a separate 0–100% replacement chance and toggle Bandits, Blood guards, Vidmo, Kobolds or No spawn. Group results stay with the save and reroll on natural respawn. Quest-gated and scripted encounters are excluded.
+Set boar and wolf populations from 10% to 200%. Give each species a separate 0–100% replacement chance and toggle Bandits, Regular guards, Blood guards, Vidmo, Kobolds or No spawn. Group results stay with the save and reroll on natural respawn. Quest-gated and scripted encounters are excluded.

@@ -29,7 +29,8 @@ humanoid appearance initialization, activity binding for suppression, death sche
 respawn eligibility, attempt dispatch and game-clock advancement. Required-hook failure
 removes the partial installation and leaves Lua population adjustment available.
 `_LWConfigureReplacementV1` accepts boar chance, wolf chance, boar pool bitmask,
-wolf pool bitmask and Logging. Lua consumes these in order; each pool has five bits.
+wolf pool bitmask and Logging. Lua consumes these in order; each pool has six bits. Existing bit positions and saved outcome IDs stay fixed;
+Regular guards use the appended bit 5 / outcome ID 6, after No spawn.
 
 `ReplacementPolicy.hpp` selects once per whole group. `EncounterCycle.hpp` defines
 the cycle rules and a versioned 40-byte record keyed by original area GUID, source
@@ -49,7 +50,7 @@ This adapter performs no direct save-file IO.
 
 Generated row names, group quantities, locations and respawn policies stay intact.
 Definitions and row AI overrides use engine FProperty allocation, import, copy,
-comparison and destruction. Blood guards receive the hostile human reactions and
+comparison and destruction. Regular guards and blood guards receive the hostile human reactions and
 global-bandit faction; other outcomes use their stock profiles. Foreign overrides,
 quest start conditions and scripted/fixed encounters are excluded.
 
@@ -74,7 +75,7 @@ animal coats and human appearance IDs. Normal restoration retains a human choice
 new cycles reset reused fields before normal randomized humanoid initialization.
 
 `EquipmentRepair.inl` runs before that same initializer. For a living, actorless
-saved bandit or blood guard, it checks the stock weapon slot against the saved
+saved bandit, regular guard or blood guard, it checks the stock weapon slot against the saved
 active loadout. A missing weapon requests the game's normal equipment seeding;
 the helper does not write inventory contents. Separate equipment journal records
 include the persistent member ID and mark initialization once per encounter cycle,
