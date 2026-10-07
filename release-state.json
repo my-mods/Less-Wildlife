@@ -75,7 +75,7 @@
         "impact": "minor",
         "rationale": "Add configurable wildlife replacement pools, saved encounter choices, hostile guards and no-spawn outcomes, retaining existing population controls and migrating preferences.",
         "majorOverride": false,
-        "reviewedInputs": "980c1a7bdc790b0fb816bd820fc0a92df65a0075270dbbba936c822533939cbe",
+        "reviewedInputs": "4f0808f7e8b3549cd171425a74681c6930edc1e9fa86dcbb93d38b1a8ca14d36",
         "divergenceReviewed": false
       }
     }
