@@ -57,7 +57,9 @@ local function readSettings()
  local values,ready,why=settings.load(root..'settings.ini')
  populationPercent=values.populationPercent
  reduceBoars,reduceWolves=values.reduceBoars==1,values.reduceWolves==1
- logLevel=values.logLevel or 2;ModDiagnosticLevel=logLevel;debugLogging=logLevel==4
+ -- A failed preparation must not replace the read-only bootstrap level with defaults.
+ if ready then logLevel=values.logLevel or logLevel end
+ ModDiagnosticLevel=logLevel;debugLogging=logLevel==4
  updatePools(values)
  boarReplacementChance,wolfReplacementChance,settingsReady=values.boarReplacementChance,values.wolfReplacementChance,ready
  if not ready then log('Settings upgrade failed; replacement stays Off: '..tostring(why)) end

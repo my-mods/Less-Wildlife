@@ -51,17 +51,24 @@ function M.upgrade(original)
   end
  end
  -- Explicit new setting wins; preserve legacy line/comments as import-only.
- local explicit,legacy=nil,nil;section=nil
+ local explicit,legacy,legacyCount,invalidLegacy=nil,nil,0,false;section=nil
  for _,line in ipairs(list)do
   section=header(line.body) or section
   if section=='LessWildlife' then
    local n=line.body:match('^%s*logLevel%s*=%s*([^;#]*)')
    if n then assert(not explicit,'Duplicate logLevel');explicit=true;assert(value('logLevel',n),'Invalid logLevel') end
    local old=line.body:match('^%s*debugLogging%s*=%s*([^;#]*)')
-   if old then assert(legacy==nil,'Duplicate legacy logging');legacy=tonumber(old);assert(legacy==0 or legacy==1,'Invalid legacy logging') end
+   if old then
+    legacyCount=legacyCount+1;legacy=tonumber(old)
+    invalidLegacy=invalidLegacy or (legacy~=0 and legacy~=1)
+   end
   end
  end
- if not explicit then settings.logLevel=legacy==1 and 4 or 2 end
+ if not explicit then
+  assert(legacyCount<=1,'Duplicate legacy logging')
+  assert(not invalidLegacy,'Invalid legacy logging')
+  settings.logLevel=legacy==1 and 4 or 2
+ end
  local seen,out={},{};section=nil
  local newline=data:find('\r\n',1,true) and '\r\n' or '\n'
  local sectionFound=false

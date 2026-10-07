@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Keep Logging Off silent if settings preparation fails, and honor the selected logging level over obsolete preferences.
+
 - Reduce repeated work when revisiting wildlife areas and leaving groups unchanged.
 - Add optional diagnostics to help investigate encounter-related stutters.
 - Add Regular guards as a separate hostile replacement choice for boars and wolves.
