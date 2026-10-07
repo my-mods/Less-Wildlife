@@ -1,6 +1,7 @@
 -- Configurable wildlife population scaling. See LICENSE.txt and UPSTREAM.json.
 local here=assert(debug.getinfo(1,'S').source:gsub('^@',''):match('^(.*[/\\])'))
 local root=here..'../'
+ModDiagnosticLevel=dofile(here..'ModLogLevels.lua').readLevel(root..'settings.ini')
 local species={
  ['/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_Base.NPCDef_Boar_Base_C']='boar',
  ['/Game/_Dawnwalker/Combat/Enemies/Boar/NPCDef_Boar_NewAI.NPCDef_Boar_NewAI_C']='boar',
@@ -17,6 +18,7 @@ local HOOK='/Script/Population.PopulationArea:OnBeginOverlapOuterBox'
 local MAX_ENTRIES,FRAME_ENTRIES,CACHE_LIMIT=64,128,4096
 local cache,slots,count,prune={}, {},0,1
 local system,frameFn,frame,frameEntries,frameTime
+local logLevel=ModDiagnosticLevel
 local debugLogging,populationPercent=false,100
 local reduceBoars,reduceWolves=true,true
 local boarReplacementChance,wolfReplacementChance,settingsReady=0,0,false
@@ -40,7 +42,7 @@ local function chance(value)
  if type(value)=='number' and value%1==0 and value>=0 and value<=100 then return value end
 end
 local stats,lastSummary={},nil
-local function log(s)print('[Less Wildlife] '..s..'\n')end
+local function log(s,severity) if logLevel>=(severity or 2) then print('[Less Wildlife] '..s..'\n') end end
 local function valid(o)return o~=nil and o:IsValid()==true end
 local function method(o,name)
  local f=o[name]
@@ -55,14 +57,14 @@ local function readSettings()
  local values,ready,why=settings.load(root..'settings.ini')
  populationPercent=values.populationPercent
  reduceBoars,reduceWolves=values.reduceBoars==1,values.reduceWolves==1
- debugLogging=values.debugLogging==1
+ logLevel=values.logLevel or 2;ModDiagnosticLevel=logLevel;debugLogging=logLevel==4
  updatePools(values)
  boarReplacementChance,wolfReplacementChance,settingsReady=values.boarReplacementChance,values.wolfReplacementChance,ready
  if not ready then log('Settings upgrade failed; replacement stays Off: '..tostring(why)) end
 end
 local function configureReplacement()
- if type(_LWConfigureReplacementV1)=='function' then
-  _LWConfigureReplacementV1(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,pools.boar,pools.wolf,debugLogging and 1 or 0)
+ if type(_LWConfigureReplacementLogV2)=='function' then
+  _LWConfigureReplacementLogV2(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,pools.boar,pools.wolf,logLevel)
  end
 end
 local function record(key,n)
@@ -205,12 +207,12 @@ readSettings()
 configureReplacement()
 -- A missing optional menu does not affect population scaling.
 pcall(function()
- local api=dofile(here..'dmm_api.lua')
+ local api=dofile(here..'ModDmmApi.lua')
  api.subscribe('Local_LessWildlife',function(values)
   populationPercent=percentage(values.populationPercent) or populationPercent
   if values.reduceBoars==0 or values.reduceBoars==1 then reduceBoars=values.reduceBoars==1 end
   if values.reduceWolves==0 or values.reduceWolves==1 then reduceWolves=values.reduceWolves==1 end
-  if values.debugLogging~=nil then debugLogging=values.debugLogging==1 end
+  if values.logLevel~=nil then logLevel=values.logLevel or 2;ModDiagnosticLevel=logLevel;debugLogging=logLevel==4 end
   wolfReplacementChance=chance(values.wolfReplacementChance) or wolfReplacementChance
   boarReplacementChance=chance(values.boarReplacementChance) or boarReplacementChance
   updatePools(values)
@@ -228,7 +230,7 @@ initialize=function()
   system=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
   assert(valid(system),'KismetSystemLibrary unavailable')
   frameFn=assert(method(system,'GetFrameCount'),'GetFrameCount unavailable')
-  if type(_LWStartReplacementV1)=='function' and type(_LWConfigureReplacementV1)=='function' then
+  if type(_LWStartReplacementV1)=='function' and type(_LWConfigureReplacementLogV2)=='function' then
    if not _LWStartReplacementV1() then log('Native replacement unavailable; population controls remain active.') end
   elseif boarReplacementChance~=0 or wolfReplacementChance~=0 then log('Native replacement helper is missing or outdated; population controls remain active.') end
   local before,after=RegisterHook(HOOK,function(context)

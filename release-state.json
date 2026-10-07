@@ -73,9 +73,9 @@
       ],
       "pending": {
         "impact": "minor",
-        "rationale": "Add configurable wildlife replacement pools, saved encounter choices, hostile guards and no-spawn outcomes, retaining existing population controls and migrating preferences.",
+        "rationale": "Complete direct baseline delta reviewed. Retains preceding scope: Add configurable wildlife replacement pools, saved encounter choices, hostile guards and no-spawn outcomes, retaining existing population controls and migrating preferences. Adds compatible cumulative Logging Off/Error/Warning/Info/Debug, default Warning, preference migration and local unchanged-library output boundaries; native logging ABI coordinated with rebuilt DLLs. New option makes the full remaining delta minor.",
         "majorOverride": false,
-        "reviewedInputs": "4f0808f7e8b3549cd171425a74681c6930edc1e9fa86dcbb93d38b1a8ca14d36",
+        "reviewedInputs": "e3681c315154a6c351d3dd7a1e075ed2b633a6786b9ba1612ae510e66090f067",
         "divergenceReviewed": false
       }
     }

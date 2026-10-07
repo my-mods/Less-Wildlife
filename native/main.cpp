@@ -40,6 +40,7 @@ AppearanceInitializer originalAppearance{};
 void* appearanceTarget{};
 std::atomic_uint replacementMask{};
 std::atomic_uint64_t replacementOptions{};
+std::atomic_int logLevel{2};
 std::atomic_bool logging{}, active{}, failed{}, configurationReady{};
 std::atomic_uint warningCount{};
 DWORD gameThread{};
@@ -51,8 +52,8 @@ struct Stats {
 int64_t workFrame = -1; unsigned workEntries{}; uint64_t workMicros{};
 UObject* clockOwner{}; UFunction* clockFunction{};
 
-void message(const std::wstring& value) { RC::Output::send(L"[Less Wildlife native] " + value + L"\n"); }
-void warning(const wchar_t* value) { if (warningCount.fetch_add(1) < 8) message(value); }
+void message(const std::wstring& value,int severity=4) { if(logLevel<severity)return; RC::Output::send(L"[Less Wildlife native] " + value + L"\n"); }
+void warning(const wchar_t* value) { if (logLevel>=2 && warningCount.fetch_add(1) < 8) message(value,2); }
 struct HookTimer {
     struct Sample { uint64_t count{},micros{},maximum{}; };
     inline static std::array<Sample,7> samples{};
@@ -441,7 +442,7 @@ void transform(UObject* area) {
             DecisionJournal::save(store, item.saved, original);
         }
         if (logging) ++stats.rolledBack;
-        if (result == TransactionResult::RollbackFailed) { failed = true; warning(L"Replacement disabled after an unverifiable rollback."); }
+        if (result == TransactionResult::RollbackFailed) { failed = true; if(logLevel>=1&&warningCount.fetch_add(1)<8)message(L"Replacement disabled after an unverifiable rollback.",1); }
         return;
     }
     if (logging) {
@@ -478,7 +479,7 @@ void builder(UObject* area) {
     }
     catch (const std::exception& error) {
         if (logging) ++stats.skipped;
-        if (logging && warningCount.fetch_add(1) < 8) { std::string s(error.what()); message(L"Encounter unchanged: " + std::wstring(s.begin(), s.end())); }
+        if (logLevel>=2 && warningCount.fetch_add(1) < 8) { std::string s(error.what()); message(L"Encounter unchanged: " + std::wstring(s.begin(), s.end()),2); }
     }
     auto us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
     workMicros += us;
@@ -521,9 +522,9 @@ void initializeAppearance(UObject* definition, UObject* stub) {
                 // equipment. Saved animal inventories otherwise skip seeding.
                 try { if (EquipmentRepair::prepare(definition, stub) && measured) ++appearanceStats.equipment; }
                 catch (const std::exception& error) {
-                    if (logging && ++appearanceStats.failures <= 3) {
+                    if (logLevel>=2 && ++appearanceStats.failures <= 3) {
                         std::string reason = error.what();
-                        message(L"Replacement equipment retained normal initialization: " + std::wstring(reason.begin(), reason.end()));
+                        message(L"Replacement equipment retained normal initialization: " + std::wstring(reason.begin(), reason.end()),2);
                     }
                 }
                 auto record = read<void*>(stub, 0x38);
@@ -535,7 +536,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
             }
         }
     } catch (const std::exception&) {
-        if (logging && ++appearanceStats.failures <= 3) warning(L"Could not validate replacement initialization; normal game processing retained.");
+        if (logLevel>=2 && ++appearanceStats.failures <= 3) warning(L"Could not validate replacement initialization; normal game processing retained.");
     }
     if (measured) {
         const auto us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
@@ -565,7 +566,7 @@ bool start() {
         EncounterRuntime::bind();
         std::wstring reason;
         auto candidate = NativeContract::resolve(reason);
-        if (!candidate) { message(L"Replacement unavailable: " + reason); return false; }
+        if (!candidate) { message(L"Replacement unavailable: " + reason,1); return false; }
         auto status = MH_Initialize();
         require(status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED, "MinHook initialization failed");
         auto appearanceCandidate = NativeContract::appearanceInitializer();
@@ -580,7 +581,7 @@ bool start() {
         EncounterRuntime::start();
         RespawnObserver::start();
         require(RespawnObserver::enabled, "encounter lifecycle hooks unavailable");
-        if (logging) message(L"Encounter replacement ready: saved choices, natural cycles and suppression.");
+        message(L"Encounter replacement ready: saved choices, natural cycles and suppression.",3);
         return true;
     } catch (const std::exception& error) {
         active = false;
@@ -589,7 +590,7 @@ bool start() {
         if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
         if (appearanceTarget) { MH_DisableHook(appearanceTarget); MH_RemoveHook(appearanceTarget); appearanceTarget = nullptr; }
         if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(&listener);
-        if (warningCount.fetch_add(1) < 8) { std::string s(error.what()); message(L"Replacement unavailable: " + std::wstring(s.begin(), s.end())); }
+        if (warningCount.fetch_add(1) < 8) { std::string s(error.what()); message(L"Replacement unavailable: " + std::wstring(s.begin(), s.end()),1); }
         return false;
     }
 }
@@ -610,12 +611,12 @@ public:
     LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.1.0-dev"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
-        lua.register_function("_LWConfigureReplacementV1", [](const auto& l) {
+        lua.register_function("_LWConfigureReplacementLogV2", [](const auto& l) {
             // LuaMadeSimple removes each consumed argument; every read is index 1.
             auto boars = l.get_integer(1); auto wolves = l.get_integer(1);
             auto boarPool = l.get_integer(1); auto wolfPool = l.get_integer(1); auto logs = l.get_integer(1);
             LessWildlife::EncounterRuntime::configure(boars, wolves, boarPool, wolfPool);
-            LessWildlife::logging = logs == 1; return 0;
+            LessWildlife::logLevel = static_cast<int>(std::clamp<int64_t>(logs,0,4)); LessWildlife::logging = logs == 4; return 0;
         });
         lua.register_function("_LWStartReplacementV1", [](const auto& l) { l.set_bool(LessWildlife::start()); return 1; });
     }

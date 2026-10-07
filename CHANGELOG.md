@@ -1,5 +1,7 @@
 # Changelog
 
+- Choose Off, Error, Warning, Info or Debug logging; Warning is the default.
+
 ## Unreleased
 
 - Reduce repeated work when revisiting wildlife areas and leaving groups unchanged.

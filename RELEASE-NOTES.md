@@ -16,3 +16,5 @@
 - Add missing menu settings while preserving valid preferences and consolidating duplicate keys.
 - Set Population from 10% to 200%, with independent boar and wolf adjustments and 100% as the default.
 - Add optional Logging for replacement, save decisions and next-day respawn conditions.
+
+- Choose how much troubleshooting detail to record with five Logging levels.

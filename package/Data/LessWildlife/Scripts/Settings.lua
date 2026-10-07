@@ -1,12 +1,14 @@
 -- File-backed settings shared by startup and the optional Mod Setting Menu.
 local M={}
-M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','boarBandits','boarGuards','boarBloodGuards','boarVidmo','boarKobolds','boarNoSpawn','wolfBandits','wolfGuards','wolfBloodGuards','wolfVidmo','wolfKobolds','wolfNoSpawn','debugLogging'}
-M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,boarBandits=1,boarGuards=1,boarBloodGuards=1,boarVidmo=1,boarKobolds=1,boarNoSpawn=0,wolfBandits=1,wolfGuards=1,wolfBloodGuards=1,wolfVidmo=1,wolfKobolds=1,wolfNoSpawn=0,debugLogging=0}
+M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','boarBandits','boarGuards','boarBloodGuards','boarVidmo','boarKobolds','boarNoSpawn','wolfBandits','wolfGuards','wolfBloodGuards','wolfVidmo','wolfKobolds','wolfNoSpawn','logLevel'}
+M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,boarBandits=1,boarGuards=1,boarBloodGuards=1,boarVidmo=1,boarKobolds=1,boarNoSpawn=0,wolfBandits=1,wolfGuards=1,wolfBloodGuards=1,wolfVidmo=1,wolfKobolds=1,wolfNoSpawn=0,logLevel=2}
 local function value(key,raw)
  local n=tonumber(raw)
  if not n or n~=n or n%1~=0 then return end
  if key=='populationPercent' then
   if n>=1 and n<=200 then return math.max(10,n) end
+ elseif key=='logLevel' then
+  if n>=0 and n<=4 then return n end
  elseif key=='boarReplacementChance' or key=='wolfReplacementChance' then
   if n>=0 and n<=100 then return n end
  elseif n==0 or n==1 then return n end
@@ -35,7 +37,8 @@ local function header(line)
  return section and section:match('^%s*(.-)%s*$')
 end
 function M.upgrade(original)
- local data=(original or ''):gsub('^\239\187\191','')
+ local here=assert(debug.getinfo(1,'S').source:sub(2):match('^(.*[/\\])'))
+ local data=dofile(here..'ModLogLevels.lua').normalizeIniHeaders(original or '')
  assert(#data<=1048576,'settings exceed 1 MiB')
  local list=lines(data);local settings={}
  for k,v in pairs(M.defaults)do settings[k]=v end
@@ -47,6 +50,18 @@ function M.upgrade(original)
    if key then settings[key]=value(key,raw) or settings[key] end
   end
  end
+ -- Explicit new setting wins; preserve legacy line/comments as import-only.
+ local explicit,legacy=nil,nil;section=nil
+ for _,line in ipairs(list)do
+  section=header(line.body) or section
+  if section=='LessWildlife' then
+   local n=line.body:match('^%s*logLevel%s*=%s*([^;#]*)')
+   if n then assert(not explicit,'Duplicate logLevel');explicit=true;assert(value('logLevel',n),'Invalid logLevel') end
+   local old=line.body:match('^%s*debugLogging%s*=%s*([^;#]*)')
+   if old then assert(legacy==nil,'Duplicate legacy logging');legacy=tonumber(old);assert(legacy==0 or legacy==1,'Invalid legacy logging') end
+  end
+ end
+ if not explicit then settings.logLevel=legacy==1 and 4 or 2 end
  local seen,out={},{};section=nil
  local newline=data:find('\r\n',1,true) and '\r\n' or '\n'
  local sectionFound=false

@@ -45,7 +45,7 @@ Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to
 
 Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Population summaries include counts, deferred areas, failures and callback timings. Replacement messages report saved decisions, appearance resets, suppression, exclusions and failed validation. Respawn messages distinguish next-day scheduling, visibility delays, dead-member cleanup and refill attempts. A successful attempt message alone does not confirm that actors appeared.
 
-Examples and repeated messages are limited, with aggregate reports at most once per ten seconds of activity. Logging Off skips optional diagnostics and timing. Save and encounter processing remains active. If any required native function, layout or hook cannot be validated, replacement is unavailable while the Lua population controls remain available. Missing-object and missing-function errors identify the required binding. Turn Logging Off after troubleshooting.
+Examples and repeated messages are limited, with aggregate reports at most once per ten seconds of activity. Logging below Debug skips optional diagnostics and timing. Save and encounter processing remains active. If any required native function, layout or hook cannot be validated, replacement is unavailable while the Lua population controls remain available. Missing-object and missing-function errors identify the required binding. Turn Logging below Debug after troubleshooting.
 
 ## Credits
 
@@ -64,6 +64,10 @@ and `UPSTREAM.json`. The root must contain `Data`, `mod.manifest` and
 
 Repeated encounter-name checks reuse a bounded cache of parsed names. Groups that stay as wildlife or choose No spawn skip unused replacement-profile preparation. Existing area handles are reused. Saved choices, quest exclusions, spawn probabilities and respawn rules retain their normal behavior.
 
-Logging includes aggregate elapsed times for table building, appearance initialization, activity binding, encounter queueing, eligibility, attempts and clock updates. These hook measurements include the original game call and may be nested; they are not isolated mod overhead or frame times. Logging Off skips this optional instrumentation. Saved encounter choices, quest exclusions and spawn probabilities are unchanged.
+Logging includes aggregate elapsed times for table building, appearance initialization, activity binding, encounter queueing, eligibility, attempts and clock updates. These hook measurements include the original game call and may be nested; they are not isolated mod overhead or frame times. Logging below Debug skips this optional instrumentation. Saved encounter choices, quest exclusions and spawn probabilities are unchanged.
 
 Enable the final **Logging** setting for diagnostics in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Leave it Off for normal play. Timings and offline checks do not establish an in-game frame-rate improvement.
+
+### Logging
+
+Logging is the final diagnostic setting: **Off**, **Error**, **Warning** (default), **Info**, or **Debug**. Levels include all more severe messages. Off silences this mod; Debug includes detailed events and timing summaries in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Old Logging Debug preferences become Debug; old Off preferences become Warning.

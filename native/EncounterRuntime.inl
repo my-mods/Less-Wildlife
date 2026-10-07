@@ -468,7 +468,7 @@ void bindActivity(UObject* stub, int16_t phase, void* context, void* flags) {
             }
         } catch (...) {
             attemptScope->suppressionFailed = true;
-            if (logging) warning(L"No spawn completion failed validation; normal game processing retained.");
+            warning(L"No spawn completion failed validation; normal game processing retained.");
         }
     }
     // The original's first operation rejects completed stubs. Exactly one call,

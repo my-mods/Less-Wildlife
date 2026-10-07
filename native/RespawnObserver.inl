@@ -108,7 +108,7 @@ void queued(UObject* service, UObject* stub) {
             observed = measure(service, read<void*>(stub, 0xe8), RespawnEvent::Queued, sample);
     }
     try { EncounterRuntime::queued(service, stub); }
-    catch (...) { if (logging) warning(L"Encounter completion could not be saved."); }
+    catch (...) { warning(L"Encounter completion could not be saved."); }
     originalQueue(service, stub);
     if (observed) reportSafely(sample, RespawnEvent::Queued, RespawnEvidence::NextDayQueued);
 }
@@ -130,8 +130,8 @@ bool attempt(UObject* service, void* entry, void* context, bool forced) {
     if (active && configurationReady && !failed && GetCurrentThreadId() == gameThread && enabled) {
         try { EncounterRuntime::prepareAttempt(service, entry, forced, !forced && context == nullptr, scope); }
         catch (const std::exception& error) {
-            if (logging && warningCount.fetch_add(1) < 8) {
-                std::string text(error.what()); message(L"Saved encounter unavailable: " + std::wstring(text.begin(), text.end()));
+            if (logLevel>=2 && warningCount.fetch_add(1) < 8) {
+                std::string text(error.what()); message(L"Saved encounter unavailable: " + std::wstring(text.begin(), text.end()),2);
             }
         }
     }
