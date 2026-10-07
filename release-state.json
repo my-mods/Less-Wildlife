@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "packages": {
+    "main": {
+      "id": "LessWildlife",
+      "name": "Less Wildlife",
+      "archive": "Less-Wildlife.zip",
+      "packageFormat": 1,
+      "baseline": {
+        "kind": "nexus",
+        "version": "0.0.0",
+        "normalizedVersion": "0.0.0",
+        "sourceCommit": "d93711c092579cdbf0f14e453394b14e28878783",
+        "sourceTag": null,
+        "archiveSha256": "ea7bfda8a28e650296dc8ac389e032f2d42143a612e93f5520c55df7b04bb3c8",
+        "verifiedAt": "2026-10-07T12:13:13.9964442Z",
+        "nexus": {
+          "game": "thebloodofdawnwalker",
+          "pageId": "711",
+          "modId": "41742787150535",
+          "fileChainId": "8076453",
+          "versionId": "41742787152876",
+          "siteFileId": "3052"
+        }
+      },
+      "bindings": [
+        {
+          "path": "Nexus/metadata.json",
+          "jsonPointer": [
+            "version"
+          ],
+          "members": [
+            "Nexus/metadata.json"
+          ]
+        },
+        {
+          "path": "Nexus/metadata.json",
+          "jsonPointer": [
+            "file",
+            "version"
+          ],
+          "members": [
+            "Nexus/metadata.json"
+          ]
+        },
+        {
+          "path": "native/main.cpp",
+          "pattern": "ModVersion\\s*=\\s*(?:STR\\(|L)?\"(?P<version>[^\"]+)\"",
+          "count": 1,
+          "members": []
+        },
+        {
+          "path": "package/Data/LessWildlife/mod_settings.ini",
+          "pattern": "^Version\\s*=\\s*(?P<version>[^\\r\\n]+)",
+          "count": 1,
+          "members": [
+            "Data/LessWildlife/mod_settings.ini"
+          ]
+        },
+        {
+          "path": "package/mod.manifest",
+          "pattern": "<version>(?P<version>[^<]+)</version>",
+          "count": 1,
+          "members": [
+            "mod.manifest"
+          ]
+        }
+      ],
+      "excludePaths": [
+        "Optional",
+        "Compatibility",
+        "VortexExtension"
+      ],
+      "pending": {
+        "impact": "minor",
+        "rationale": "Add configurable wildlife replacement pools, saved encounter choices, hostile guards and no-spawn outcomes, retaining existing population controls and migrating preferences.",
+        "majorOverride": false,
+        "reviewedInputs": "980c1a7bdc790b0fb816bd820fc0a92df65a0075270dbbba936c822533939cbe",
+        "divergenceReviewed": false
+      }
+    }
+  }
+}
