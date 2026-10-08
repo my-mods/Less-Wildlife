@@ -608,7 +608,7 @@ void stop() {
 using namespace RC;
 class LessWildlifeMod final : public CppUserModBase {
 public:
-    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.1.0-dev"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
+    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.1.0"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
         lua.register_function("_LWConfigureReplacementLogV2", [](const auto& l) {

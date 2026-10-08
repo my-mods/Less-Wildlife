@@ -1,101 +1,104 @@
 [size=5][b][color=#E8C88A]Less Wildlife[/color][/b][/size]
-
-Adjust boar herds and wolf packs from [b]10% to 200%[/b] of their original population, with independent switches for each species. [b]100% is normal and the default[/b]; 200% doubles it.
-
-Make woodland encounters less predictable with separate [b]0–100% replacement chances[/b] for boars and wolves. Enable [b]Bandits, Regular guards, Blood guards, Vidmo, Kobolds and No spawn[/b] independently. One roll chooses the result for the whole group, equally among its enabled outcomes.
-
-At 60% with Bandits and Kobolds enabled, about 40% of groups remain animals, 30% become bandits and 30% become kobolds. An empty pool keeps the animals. Replacement chances default to 0%; the five enemy choices default to On and No spawn defaults to Off.
-
-Results stay with the game save through travel and reloading. The next natural respawn rolls again using the current settings. Partial kills do not reroll surviving members. [b]No spawn[/b] leaves the encounter empty for its current cycle while retaining its later respawn opportunity.
-
-Supported ordinary wolves include brown, white and astral variants. Quest-gated encounters, quest-specific animals, bosses, summons, authored AI overrides and fixed scripted encounters are excluded. Replacement enemies are hostile, retain the selected group size and use their own combat AI, equipment and loot. Replacement bandits, regular guards and blood guards recover missing weapons once, without refilling equipment on every reload. Roaming activities avoid inherited animal poses.
-
-[size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
-
-Open [b]Mod Settings > Less Wildlife[/b], choose your settings and press Apply.
-
-[list]
-[*][b]Population:[/b] 10% to 200% in 1% steps. Rounded to the nearest animal, with at least one for a positive population. Default: 100%.
-[*][b]Adjust boars / Adjust wolves:[/b] Independent population adjustments. Off restores original values still controlled by this mod on later encounters. Default: On.
-[*][b]Boars / Wolves — Replacement chance:[/b] 0% to 100%. Changes apply to new groups and natural respawn cycles. Default: 0%.
-[*][b]Bandits / Regular guards / Blood guards / Vidmo / Kobolds:[/b] Each On toggle includes that enemy in its species' pool. Default: On.
-[*][b]No spawn:[/b] Include an empty encounter among the outcomes. Default: Off.
-[*][b]Logging:[/b] Optional counts, timings, saved decisions and respawn details in UE4SS.log. Default: Off.
-[/list]
-
-Population and replacement settings are independent. Already spawned creatures are unaffected. Unusually large areas or dense loading bursts may retain their current values.
-
-[size=3][b]Manual configuration[/b][/size]
-
-Launch once to create [b]Dawnwalker/Binaries/Win64/ue4ss/Mods/LessWildlife/settings.ini[/b], then close the game before editing it. Use 10–200 for populationPercent, 0–100 for boarReplacementChance and wolfReplacementChance, and 0/1 for the switches. Each species has Bandits, Guards, BloodGuards, Vidmo, Kobolds and NoSpawn keys prefixed with boar or wolf. Missing keys are added at startup while valid preferences are preserved.
-
-For next-day respawn, defeat every group member, leave the area, advance into the next game day and return. The game's visibility clearance and corpse cleanup can delay it. Travel or reloading alone does not reroll the group.
-
-[size=4][b][color=#E8C88A]Installation[/color][/b][/size]
-
-[list]
-[*][b][color=#A8D5C2]Vortex:[/color][/b] Install Less-Wildlife.zip through Vortex, enable it and deploy.
-[*][b][color=#A8D5C2]Manual:[/color][/b] Copy the archive's Data/LessWildlife folder into <The Blood of Dawnwalker>/Dawnwalker/Binaries/Win64/ue4ss/Mods, preserving the folder structure.
-[/list]
-
-[size=4][b][color=#E8C88A]Reporting Bugs and other issues[/color][/b][/size]
-
-If you encounter an issue, set [b]Logging[/b] to [b]Debug[/b] in this mod’s Mod Setting Menu settings, apply the change, reproduce the issue. Then start either a bug report in the Bugs tab on Nexus (preferred method for me to track things), or at least start a new thread in comments and send me [b]Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log[/b] from your game folder. Do not report unrelated bugs in other people's threads, please, this makes it impossible for me to track issues.
-
-[size=4][b][color=#E8C88A]Credits and source[/color][/b][/size]
-
-Inspired by [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/326]Less Boars[/url] and [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/318]Less Wolves[/url] by MrSecondPlayer, including their 40% preset and ordinary-species selection. This custom implementation does not include the original scripts or artwork.
-
-Thanks to the UE4SS contributors and to mmarcussa for [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/271]Mod Setting Menu[/url] and its unchanged integration helper, included under the guide's copying permission.
-
-Banner and thumbnail are AI-enhanced from [url=https://open.video/@jasonsvideogamessource-com/v/the-blood-of-dawnwalker-prologue-fist-fight-stance-fight-boars-with-fists-unblockable-attacks]gameplay by Jason's Video Games Source[/url], used under the creator's stated reuse permission with credit. HUD removed and title added. Reconstructed details may differ from the original game frame. Promotional artwork, not a before-and-after comparison.
-
-[url=https://github.com/my-mods/Less-Wildlife]Source code and documentation[/url]. Unofficial community mod. The Blood of Dawnwalker and its imagery belong to Rebel Wolves and their respective rights holders. See LICENSE.txt for rights and third-party notices.
-
-[size=5][b][color=#E8C88A]My Dawnwalker mods[/color][/b][/size]
-
-[size=4][b][color=#E8C88A]Combat your way[/color][/b][/size]
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/161]Easier Parry and Dodge While Blocking[/url][/color][/b]
-Make parry and perfect-dodge windows longer or shorter to suit your timing.
-[b]Highlights:[/b] Consistent same-side or opposite-side ripostes; dodge while blocking; adjustable dodge invulnerability duration.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/480]Combat Camera - Configurable[/url][/color][/b]
-Choose how your camera follows enemies and how you select your targets.
-[b]Highlights:[/b] Free, smooth or native tracking; camera-directed or fixed targets; automatic lock on hit; optional center dot.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/284]Fair Duelist - Customizable Difficulty[/url][/color][/b]
-Build your own difficulty with precise control over combat balance.
-[b]Highlights:[/b] Enemy health and damage; stamina costs; normal, low-health and ranged attack delays; coordinated enemy attacks.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/448]Health Regen - Configurable[/url][/color][/b]
-Set separate health regeneration rates for your human and vampire forms.
-[b]Highlights:[/b] Optional healing during combat; optional recovery of lost vampire segments; healing stops at the selected limit.
-
-[size=4][b][color=#E8C88A]Controls and exploration[/color][/b][/size]
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/203]Controller Tweaks and Remap[/url][/color][/b]
-Tailor your controller layout and make walking and menu access more comfortable.
-[b]Highlights:[/b] 31 controller settings; wider walking range; short press for Map, long press for Game Hub; controller stutter fixes.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/449]Press to Gather - Configurable[/url][/color][/b]
-Gather nearby harvestable resources with one keyboard press or controller hold.
-[b]Highlights:[/b] Adjustable 10–200 m range; 14 controller button choices; support for 17 additional wild plant types.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/711]Less Wildlife[/url][/color][/b]
-Make ordinary boar herds and wolf packs smaller—or larger.
-[b]Highlights:[/b] Population from 10% to 200%; independent replacement chances and enemy pools; saved group outcomes.
-
-[size=4][b][color=#E8C88A]Your view, your style[/color][/b][/size]
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/452]Quiet Dawn - Configurable HUD[/url][/color][/b]
-Clear the screen while keeping health and stamina alerts when you need them.
-[b]Highlights:[/b] 17 panels with independent opacity and size; hold-to-peek; configurable combat cues, enemy information and effect icons.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/721]Style Without Sacrifice - Your Transmogrification Wardrobe[/url][/color][/b]
-Choose your equipment's appearance while keeping its stats.
-[b]Highlights:[/b] Separate day and night outfits; three saved presets; character preview; hide selected equipment; collected or all looks.
-
-[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/694]Night Vision - Configurable[/url][/color][/b]
-See in the dark as a vampire with natural colours or your preferred monochrome blend.
-[b]Highlights:[/b] Independent brightness and colour controls; keyboard or controller toggle; stays enabled through save loading and camera changes.
+<br />
+<br />Adjust boar herds and wolf packs from [b]10% to 200%[/b], with a separate switch for each species. [b]100% is the normal population and the default[/b]; 200% doubles the original population.
+<br />
+<br />Only ordinary wild boars and wolves are affected. Quest-gated, named and scripted encounters keep their normal values. Population scaling retains at least one animal; No spawn can leave an eligible group empty for one cycle.
+<br />
+<br />Optional replacements: Set independent boar and wolf replacement chances from 0% to 100%. Choose Bandits, Blood guards, Regular guards, Vidmo, Kobolds or No spawn for each species. Enabled choices have equal chances; an empty pool keeps the animals. A group keeps its choice through travel and save loading until its natural respawn. Replacement chances default to 0%.
+<br />
+<br />[size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
+<br />
+<br />Open [b]Mod Settings &gt; Less Wildlife[/b], choose your settings and press Apply. Population changes take effect on later area encounters.
+<br />
+<br />[list]
+<br />[*][b][color=#A8D5C2]Population:[/color][/b] 10% to 200% in 1% steps. Shared by the enabled species; default 100%. Quantities are rounded to the nearest animal.[/*]
+<br />[*][b][color=#A8D5C2]Adjust boars:[/color][/b] On applies the selected percentage to ordinary boar herds. Off restores original values still controlled by this mod. Default: On.[/*]
+<br />[*][b][color=#A8D5C2]Adjust wolves:[/color][/b] The same independent choice for ordinary wolf packs. Default: On.[/*]
+<br />[*][b][color=#A8D5C2]Logging:[/color][/b] Choose Off, Error, Warning, Info or Debug. Warning is the default; Off is silent. Debug records detailed troubleshooting information in Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log.[/*]
+<br />[/list]
+<br />[color=#E6B980]Off disables population scaling for that species; it does not remove the animals.[/color] Already spawned animals are unaffected. Setting Population to 100% also restores original values still controlled by this mod. Changes made by the game or another mod are preserved.
+<br />
+<br />[size=3][b][color=#A8D5C2]Manual configuration[/color][/b][/size]
+<br />
+<br />Launch the game once to create settings.ini, then close it. Open this file inside your The Blood of Dawnwalker game folder:
+<br />
+<br />[code]Dawnwalker&#92;Binaries&#92;Win64&#92;ue4ss&#92;Mods&#92;LessWildlife&#92;settings.ini[/code]
+<br />[code][LessWildlife]
+<br />populationPercent = 100
+<br />reduceBoars = 1
+<br />reduceWolves = 1
+<br />logLevel = 2[/code]
+<br />Use an integer from 10 to 200 for populationPercent. For the species switches, use 0 for Off or 1 for On. logLevel uses 0–4 for Off, Error, Warning, Info and Debug. Keep the generated replacement keys; the included README lists them. Save and restart the game.
+<br />
+<br />Unusually large areas or very dense bursts of encounters keep their current population values until a later encounter can be handled.
+<br />
+<br />[size=4][b][color=#E8C88A]Installation[/color][/b][/size]
+<br />
+<br />[list]
+<br />[*][b][color=#A8D5C2]Vortex:[/color][/b] Install Less-Wildlife.zip through Vortex, enable it and deploy.[/*]
+<br />[*][b][color=#A8D5C2]Manual:[/color][/b] Copy the archive's Data/LessWildlife folder into &lt;The Blood of Dawnwalker&gt;/Dawnwalker/Binaries/Win64/ue4ss/Mods, preserving the folder structure.[/*]
+<br />[/list]
+<br />[size=4][b][color=#E8C88A]Reporting Bugs and other issues[/color][/b][/size]
+<br />
+<br />If you encounter an issue, set [b]Logging[/b] to [b]Debug[/b] in this mod’s Mod Setting Menu settings, apply the change, reproduce the issue. Then start either a bug report in the Bugs tab on Nexus (preferred method for me to track things), or at least start a new thread in comments and send me [b]Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log[/b] from your game folder. Do not report unrelated bugs in other people's threads, please, this makes it impossible for me to track issues.
+<br />
+<br />
+<br />
+<br />[size=4][b][color=#E8C88A]Credits and source[/color][/b][/size]
+<br />
+<br />Inspired by [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/326]Less Boars[/url] and [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/318]Less Wolves[/url] by MrSecondPlayer. This custom implementation does not include the original scripts or artwork.
+<br />
+<br />Thanks to the UE4SS contributors and to mmarcussa for [url=https://www.nexusmods.com/thebloodofdawnwalker/mods/271]Mod Setting Menu[/url] and its unchanged integration helper, included under the guide's copying permission.
+<br />
+<br />Banner and thumbnail are from [url=https://open.video/@jasonsvideogamessource-com/v/the-blood-of-dawnwalker-prologue-fist-fight-stance-fight-boars-with-fists-unblockable-attacks]gameplay by Jason's Video Games Source[/url], used under the creator's stated reuse permission with credit. 
+<br />
+<br />[url=https://github.com/my-mods/Less-Wildlife]Source code and documentation[/url]. Unofficial community mod. The Blood of Dawnwalker and its imagery belong to Rebel Wolves and their respective rights holders. See LICENSE.txt for rights and third-party notices.
+<br />
+<br />[size=5][b][color=#E8C88A]My Dawnwalker mods[/color][/b][/size]
+<br />
+<br />[size=4][b][color=#E8C88A]Combat your way[/color][/b][/size]
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/161]Easier Parry and Dodge While Blocking[/url][/color][/b]
+<br />Make parry and perfect-dodge windows longer or shorter to suit your timing.
+<br />[b]Highlights:[/b] Consistent same-side or opposite-side ripostes; dodge while blocking; adjustable dodge invulnerability duration.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/480]Combat Camera - Configurable[/url][/color][/b]
+<br />Choose how your camera follows enemies and how you select your targets.
+<br />[b]Highlights:[/b] Free, smooth or native tracking; camera-directed or fixed targets; automatic lock on hit; optional center dot.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/284]Fair Duelist - Customizable Difficulty[/url][/color][/b]
+<br />Build your own difficulty with precise control over combat balance.
+<br />[b]Highlights:[/b] Enemy health and damage; stamina costs; normal, low-health and ranged attack delays; coordinated enemy attacks.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/448]Health Regen - Configurable[/url][/color][/b]
+<br />Set separate health regeneration rates for your human and vampire forms.
+<br />[b]Highlights:[/b] Optional healing during combat; optional recovery of lost vampire segments; healing stops at the selected limit.
+<br />
+<br />[size=4][b][color=#E8C88A]Controls and exploration[/color][/b][/size]
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/203]Controller Tweaks and Remap[/url][/color][/b]
+<br />Tailor your controller layout and make walking and menu access more comfortable.
+<br />[b]Highlights:[/b] 31 controller settings; wider walking range; short press for Map, long press for Game Hub; controller stutter fixes.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/449]Press to Gather - Configurable[/url][/color][/b]
+<br />Gather nearby harvestable resources with one keyboard press or controller hold.
+<br />[b]Highlights:[/b] Adjustable 10–200 m range; 14 controller button choices; support for 17 additional wild plant types.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/711]Less Wildlife[/url][/color][/b]
+<br />Make ordinary boar herds and wolf packs smaller—or larger.
+<br />[b]Highlights:[/b] Population from 10% to 200%; separate boar and wolf switches; quest and named animals keep their normal values.
+<br />
+<br />[size=4][b][color=#E8C88A]Your view, your style[/color][/b][/size]
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/452]Quiet Dawn - Configurable HUD[/url][/color][/b]
+<br />Clear the screen while keeping health and stamina alerts when you need them.
+<br />[b]Highlights:[/b] 17 panels with independent opacity and size; hold-to-peek; configurable combat cues, enemy information and effect icons.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/721]Style Without Sacrifice - Your Transmogrification Wardrobe[/url][/color][/b]
+<br />Choose your equipment's appearance while keeping its stats.
+<br />[b]Highlights:[/b] Separate day and night outfits; three saved presets; character preview; hide selected equipment; collected or all looks.
+<br />
+<br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/694]Night Vision - Configurable[/url][/color][/b]
+<br />See in the dark as a vampire with natural colours or your preferred monochrome blend.
+<br />[b]Highlights:[/b] Independent brightness and colour controls; keyboard or controller toggle; stays enabled through save loading and camera changes.
+<br />

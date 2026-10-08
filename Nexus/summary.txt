@@ -1,1 +1,1 @@
-Adjust boar and wolf populations and give each species a chance to become Bandits, Regular guards, Blood guards, Vidmo, Kobolds or an empty encounter. Choose the allowed outcomes independently.
+Adjust ordinary boar and wolf populations, or replace eligible groups with Bandits, Blood guards, Regular guards, Vidmo, Kobolds or no spawn. Configure each species independently in Mod Setting Menu.

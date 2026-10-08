@@ -6,7 +6,7 @@
   "author": "oOCamilleOo",
   "uploader": "oOCamilleOo",
   "language": "English",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "tags": [
     "Gameplay",
     "Quality of Life",
@@ -21,11 +21,12 @@
   "file": {
     "name": "Less Wildlife",
     "archive": "Less-Wildlife.zip",
-    "version": "0.1.0-dev",
+    "version": "0.1.0",
     "category": "main",
     "allowModManagerDownload": true,
     "primaryModManagerDownload": true,
-    "showRequirementsPopUp": true
+    "showRequirementsPopUp": true,
+    "description": "Add separate 0–100% replacement chances for boar herds and wolf packs.\nChoose Bandits, Blood guards, Regular guards, Vidmo, Kobolds or No spawn independently for each species. Enabled outcomes have equal chances; an empty selection keeps the animals.\nKeep each group’s choice through travel and save loading, with a new roll on natural respawn. No spawn leaves the group empty for one cycle.\nKeep quest-gated and scripted encounters unchanged.\nFix replacement enemies failing to appear, missing their weapons, inheriting animal poses or behaving as non-hostile creatures.\nChoose Off, Error, Warning, Info or Debug logging; Warning is the default."
   },
   "requirements": [
     {
@@ -44,5 +45,6 @@
     }
   ],
   "donationPoints": false,
-  "permissionsFile": "permissions.txt"
+  "permissionsFile": "permissions.txt",
+  "summary": "Adjust ordinary boar and wolf populations, or replace eligible groups with Bandits, Blood guards, Regular guards, Vidmo, Kobolds or no spawn. Configure each species independently in Mod Setting Menu."
 }
