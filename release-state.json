@@ -74,9 +74,9 @@
       ],
       "pending": {
         "impact": "major",
-        "rationale": "User explicitly requests version1.0 for saved enemy-size ranges, conditional species modes, shared enemy pool and final menu title; player-facing release materials prepared.",
+        "rationale": "User-requested1.0 release: per-enemy size ranges and shared replacement selection; concise player changelog reviewed by user.",
         "majorOverride": true,
-        "reviewedInputs": "75294e260d15c1160e7d7fa6e5d402302a382c551190999cab7d5ecda67e04ae",
+        "reviewedInputs": "ecf08e36fa1b8ee24bc2d3926a42c7410c0bdd9771d5e7f1b2ee16e1ed257b16",
         "divergenceReviewed": false
       }
     }
