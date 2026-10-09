@@ -1,5 +1,5 @@
 {
-  "title": "Less Wildlife",
+  "title": "Wilder Wildlife - Customize Enemy Spawns",
   "game": "thebloodofdawnwalker",
   "gameId": 9719,
   "category": "Gameplay",
@@ -19,7 +19,7 @@
   "modId": 711,
   "requirementsMode": "file-to-file",
   "file": {
-    "name": "Less Wildlife",
+    "name": "Wilder Wildlife - Customize Enemy Spawns",
     "archive": "Less-Wildlife.zip",
     "version": "0.1.0",
     "category": "main",

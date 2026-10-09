@@ -1,4 +1,4 @@
-# Less Wildlife 0.1.0
+# Wilder Wildlife - Customize Enemy Spawns 0.1.0
 
 - Add separate 0–100% replacement chances for boar herds and wolf packs.
 - Choose Bandits, Blood guards, Regular guards, Vidmo, Kobolds or No spawn independently for each species. Enabled outcomes have equal chances; an empty selection keeps the animals.

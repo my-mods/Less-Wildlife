@@ -73,9 +73,9 @@
       ],
       "pending": {
         "impact": "minor",
-        "rationale": "Complete direct baseline delta reviewed. Retains preceding scope: Add configurable wildlife replacement pools, saved encounter choices, hostile guards and no-spawn outcomes, retaining existing population controls and migrating preferences. Adds compatible cumulative Logging Off/Error/Warning/Info/Debug, default Warning, preference migration and local unchanged-library output boundaries; native logging ABI coordinated with rebuilt DLLs. New option makes the full remaining delta minor. Review follow-up: explicit valid logLevel ignores invalid/duplicate obsolete toggles, and failed preparation preserves the bootstrapped output level. Release preparation: verified unchanged live Nexus baseline on 2026-10-08; consolidated complete player changelog and preserved published page formatting/history.",
+        "rationale": "Complete direct Nexus baseline delta includes compatible replacement pools, saved group choices, hostile guards, No spawn and logging levels. Public rename updates display title, images, README and promotional copy, preserving archive, runtime, menu and settings identities.",
         "majorOverride": false,
-        "reviewedInputs": "286bbaae3ec80c8e0f61e41ce9e828893c2118e1dabd73ed6c8de9e598c10e2b",
+        "reviewedInputs": "43527f9854a9e0e078af39e4938b1e3b9208723943f1ea4df9b23ca4054f3c5e",
         "divergenceReviewed": false
       }
     }
