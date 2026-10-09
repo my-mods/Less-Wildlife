@@ -19,8 +19,9 @@ local MAX_ENTRIES,FRAME_ENTRIES,CACHE_LIMIT=64,128,4096
 local cache,slots,count,prune={}, {},0,1
 local system,frameFn,frame,frameEntries,frameTime
 local logLevel=ModDiagnosticLevel
-local debugLogging,populationPercent=false,100
-local reduceBoars,reduceWolves=true,true
+local debugLogging=false
+local boarPopulationPercent,wolfPopulationPercent=100,100
+local replaceBoars,replaceWolves=false,false
 local boarReplacementChance,wolfReplacementChance,settingsReady=0,0,false
 local pools={boar=47,wolf=47}
 local outcomeValues={}
@@ -29,16 +30,14 @@ local groupRanges=sizeSettings.ranges({})
 -- Append new pool bits so existing native settings and saved outcome IDs agree.
 local outcomeNames={'Bandits','BloodGuards','Vidmo','Kobolds','NoSpawn','Guards'}
 local function updatePools(values)
- for _,animal in ipairs({'boar','wolf'})do
-  local mask=0
-  for i,name in ipairs(outcomeNames)do
-   local key=animal..name;local v=values[key]
-   if v==0 or v==1 then outcomeValues[key]=v end
-   if outcomeValues[key]==nil then outcomeValues[key]=name~='NoSpawn' and 1 or 0 end
-   if outcomeValues[key]==1 then mask=mask+2^(i-1) end
-  end
-  pools[animal]=mask
+ local mask=0
+ for i,name in ipairs(outcomeNames)do
+  local key='enemy'..name;local v=values[key]
+  if v==0 or v==1 then outcomeValues[key]=v end
+  if outcomeValues[key]==nil then outcomeValues[key]=name~='NoSpawn' and 1 or 0 end
+  if outcomeValues[key]==1 then mask=mask+2^(i-1) end
  end
+ pools.boar,pools.wolf=mask,mask
 end
 local function chance(value)
  if type(value)=='number' and value%1==0 and value>=0 and value<=100 then return value end
@@ -57,8 +56,8 @@ end
 local function readSettings()
  local settings=dofile(here..'Settings.lua')
  local values,ready,why=settings.load(root..'settings.ini')
- populationPercent=values.populationPercent
- reduceBoars,reduceWolves=values.reduceBoars==1,values.reduceWolves==1
+ boarPopulationPercent,wolfPopulationPercent=values.boarPopulationPercent,values.wolfPopulationPercent
+ replaceBoars,replaceWolves=values.replaceBoars==1,values.replaceWolves==1
  -- A failed preparation must not replace the read-only bootstrap level with defaults.
  if ready then logLevel=values.logLevel or logLevel end
  ModDiagnosticLevel=logLevel;debugLogging=logLevel==4
@@ -69,7 +68,7 @@ local function readSettings()
 end
 local function configureReplacement()
  if type(_LWConfigureReplacementSizesV3)=='function' then
-  _LWConfigureReplacementSizesV3(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,pools.boar,pools.wolf,logLevel,table.unpack(groupRanges))
+  _LWConfigureReplacementSizesV3(settingsReady and replaceBoars and boarReplacementChance or 0,settingsReady and replaceWolves and wolfReplacementChance or 0,pools.boar,pools.wolf,logLevel,table.unpack(groupRanges))
  end
 end
 local function record(key,n)
@@ -127,8 +126,9 @@ local function apply(area)
  if not valid(area) then return end
  local address=area:GetAddress()
  local entry=cache[address]
- local percent=populationPercent
- local settingsKey=percent+(reduceBoars and 256 or 0)+(reduceWolves and 512 or 0)
+ local boarPercent=replaceBoars and 100 or boarPopulationPercent
+ local wolfPercent=replaceWolves and 100 or wolfPopulationPercent
+ local settingsKey=boarPercent+wolfPercent*256
  if entry and valid(entry.object) and valid(entry.world) then
   if entry.blocked or (entry.done and entry.settingsKey==settingsKey)
    or (entry.attemptKey==settingsKey and (entry.failures or 0)>=3) then record('cached');return end
@@ -176,7 +176,8 @@ local function apply(area)
     end
     if not previous.released then
      -- Recompute from the original population, including after Apply or retry.
-     local enabled=percent~=100 and ((species[path]=='boar' and reduceBoars) or (species[path]=='wolf' and reduceWolves))
+     local percent=species[path]=='boar' and boarPercent or wolfPercent
+     local enabled=percent~=100
      local q=enabled and scaled(previous.originalQ,percent) or previous.originalQ
      local m=enabled and math.max(q,scaled(previous.originalM,percent)) or previous.originalM
      if q~=quantity or m~=maximum then pending[#pending+1]={index=i,path=path,q=q,m=m,oldQ=quantity,oldM=maximum} end
@@ -214,9 +215,10 @@ configureReplacement()
 pcall(function()
  local api=dofile(here..'ModDmmApi.lua')
  api.subscribe('Local_LessWildlife',function(values)
-  populationPercent=percentage(values.populationPercent) or populationPercent
-  if values.reduceBoars==0 or values.reduceBoars==1 then reduceBoars=values.reduceBoars==1 end
-  if values.reduceWolves==0 or values.reduceWolves==1 then reduceWolves=values.reduceWolves==1 end
+  boarPopulationPercent=percentage(values.boarPopulationPercent) or boarPopulationPercent
+  wolfPopulationPercent=percentage(values.wolfPopulationPercent) or wolfPopulationPercent
+  if values.replaceBoars==0 or values.replaceBoars==1 then replaceBoars=values.replaceBoars==1 end
+  if values.replaceWolves==0 or values.replaceWolves==1 then replaceWolves=values.replaceWolves==1 end
   if values.logLevel~=nil then logLevel=values.logLevel or 2;ModDiagnosticLevel=logLevel;debugLogging=logLevel==4 end
   wolfReplacementChance=chance(values.wolfReplacementChance) or wolfReplacementChance
   boarReplacementChance=chance(values.boarReplacementChance) or boarReplacementChance

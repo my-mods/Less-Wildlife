@@ -26,7 +26,7 @@
     "allowModManagerDownload": true,
     "primaryModManagerDownload": true,
     "showRequirementsPopUp": true,
-    "description": "Set wildlife group size from 10–200% and replacement enemy counts from 1–10 per type. Configure separate boar and wolf replacement pools and chances. Enemy choices and counts persist through save loading until natural respawn."
+    "description": "Choose wildlife sizing or replacement chance separately for boars and wolves. Use one shared enemy pool with conditional 1–10 group-size sliders. Enemy choices and counts persist through save loading until natural respawn."
   },
   "requirements": [
     {
@@ -39,7 +39,7 @@
     {
       "name": "Mod Setting Menu",
       "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/271",
-      "minimumVersion": "1.0.6",
+      "minimumVersion": "1.0.7.1",
       "optional": true,
       "note": "Mod Setting Menu"
     }

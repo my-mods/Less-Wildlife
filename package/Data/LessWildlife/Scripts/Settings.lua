@@ -1,13 +1,13 @@
 -- File-backed settings shared by startup and the optional Mod Setting Menu.
 local M={}
-M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','boarBandits','boarGuards','boarBloodGuards','boarVidmo','boarKobolds','boarNoSpawn','wolfBandits','wolfGuards','wolfBloodGuards','wolfVidmo','wolfKobolds','wolfNoSpawn','banditGroupMin','banditGroupMax','guardGroupMin','guardGroupMax','bloodGuardGroupMin','bloodGuardGroupMax','vidmoGroupMin','vidmoGroupMax','koboldGroupMin','koboldGroupMax','logLevel'}
-M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,boarBandits=1,boarGuards=1,boarBloodGuards=1,boarVidmo=1,boarKobolds=1,boarNoSpawn=0,wolfBandits=1,wolfGuards=1,wolfBloodGuards=1,wolfVidmo=1,wolfKobolds=1,wolfNoSpawn=0,banditGroupMin=3,banditGroupMax=6,guardGroupMin=2,guardGroupMax=4,bloodGuardGroupMin=2,bloodGuardGroupMax=4,vidmoGroupMin=1,vidmoGroupMax=2,koboldGroupMin=4,koboldGroupMax=10,logLevel=2}
+M.keys={'replaceBoars','boarPopulationPercent','replaceWolves','wolfPopulationPercent','boarReplacementChance','wolfReplacementChance','enemyBandits','enemyGuards','enemyBloodGuards','enemyVidmo','enemyKobolds','enemyNoSpawn','banditGroupMin','banditGroupMax','guardGroupMin','guardGroupMax','bloodGuardGroupMin','bloodGuardGroupMax','vidmoGroupMin','vidmoGroupMax','koboldGroupMin','koboldGroupMax','logLevel'}
+M.defaults={replaceBoars=0,boarPopulationPercent=100,replaceWolves=0,wolfPopulationPercent=100,boarReplacementChance=0,wolfReplacementChance=0,enemyBandits=1,enemyGuards=1,enemyBloodGuards=1,enemyVidmo=1,enemyKobolds=1,enemyNoSpawn=0,banditGroupMin=3,banditGroupMax=6,guardGroupMin=2,guardGroupMax=4,bloodGuardGroupMin=2,bloodGuardGroupMax=4,vidmoGroupMin=1,vidmoGroupMax=2,koboldGroupMin=4,koboldGroupMax=10,logLevel=2}
 local function value(key,raw)
  local n=tonumber(raw)
  if not n or n~=n or n%1~=0 then return end
  if key:match('GroupMin$') or key:match('GroupMax$') then
   return math.max(1,math.min(10,n))
- elseif key=='populationPercent' then
+ elseif key=='populationPercent' or key=='boarPopulationPercent' or key=='wolfPopulationPercent' then
   if n>=1 and n<=200 then return math.max(10,n) end
  elseif key=='logLevel' then
   if n>=0 and n<=4 then return n end
@@ -54,12 +54,35 @@ function M.upgrade(original)
  local list=lines(data);local settings={}
  for k,v in pairs(M.defaults)do settings[k]=v end
  local section
+ local explicitEnemies,oldEnemies,explicitSettings,oldSettings={},{},{},{}
  for _,line in ipairs(list)do
   section=header(line.body) or section
   if section=='LessWildlife' then
    local key,_,_,raw=assignment(line.body)
-   if key then settings[key]=value(key,raw) or settings[key] end
+   if key then
+    settings[key]=value(key,raw) or settings[key]
+    if value(key,raw)~=nil then explicitSettings[key]=true end
+    if key:match("^enemy") and value(key,raw)~=nil then explicitEnemies[key]=true end
+   end
+   local old,rawOld
+   -- Read legacy per-species switches without rewriting their retained lines.
+   old,rawOld=line.body:match("^%s*([%w]+)%s*=%s*([^;#]*)")
+   if old=="populationPercent" or old=="reduceBoars" or old=="reduceWolves" then local n=value(old,rawOld);if n~=nil then oldSettings[old]=n end end
+   if old and (old:match("^boar") or old:match("^wolf")) then
+    local suffix=old:sub(5);local shared="enemy"..suffix
+    if M.defaults[shared]~=nil then local n=value(shared,rawOld);if n~=nil then oldEnemies[old]=n end end
+   end
   end
+ end
+ for _,species in ipairs({"Boars","Wolves"})do
+  local stem=species=="Boars" and "boar" or "wolf"
+  local mode="replace"..species;local percent=stem.."PopulationPercent"
+  if not explicitSettings[mode] then settings[mode]=settings[stem.."ReplacementChance"]>0 and 1 or 0 end
+  if not explicitSettings[percent] then settings[percent]=oldSettings["reduce"..species]==0 and 100 or (oldSettings.populationPercent or 100) end
+ end
+ for _,suffix in ipairs({"Bandits","Guards","BloodGuards","Vidmo","Kobolds","NoSpawn"})do
+  local shared="enemy"..suffix;local a,b=oldEnemies["boar"..suffix],oldEnemies["wolf"..suffix]
+  if not explicitEnemies[shared] and (a~=nil or b~=nil) then settings[shared]=(a==1 or b==1) and 1 or 0 end
  end
  -- Explicit new setting wins; preserve legacy line/comments as import-only.
  local explicit,legacy,legacyCount,invalidLegacy=nil,nil,0,false;section=nil

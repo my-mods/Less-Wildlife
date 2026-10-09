@@ -1,1 +1,1 @@
-Set wildlife group size from 10–200% and replacement enemy counts from 1–10 per type. Configure separate boar and wolf replacement pools and chances. Enemy choices and counts persist through save loading until natural respawn.
+Choose wildlife sizing or replacement chance separately for boars and wolves. Use one shared enemy pool with conditional 1–10 group-size sliders. Enemy choices and counts persist through save loading until natural respawn.

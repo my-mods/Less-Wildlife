@@ -1,26 +1,20 @@
 [size=5][b][color=#E8C88A]Wilder Wildlife - Customize Enemy Spawns[/color][/b][/size]
 <br />
-<br />Adjust boar herds and wolf packs from [b]10% to 200%[/b], with a separate switch for each species. [b]100% is the normal population and the default[/b]; 200% doubles the original population.
+<br />Adjust boar herds and wolf packs from [b]10% to 200%[/b], with a separate size and mode for each species. [b]100% is the normal population and the default[/b]; 200% doubles the original population.
 <br />
 <br />Only ordinary wild boars and wolves are affected. Quest-gated, named and scripted encounters keep their normal values. Population scaling retains at least one animal; No spawn can leave an eligible group empty for one cycle.
 <br />
-<br />Optional replacements: Set independent boar and wolf replacement chances from 0% to 100%. Choose Bandits, Blood guards, Regular guards, Vidmo, Kobolds or No spawn for each species. Enabled choices have equal chances; an empty pool keeps the animals. A group keeps its choice through travel and save loading until its natural respawn. Replacement chances default to 0%.
+<br />Optional replacements: Set independent boar and wolf replacement chances from 0% to 100%. Choose Bandits, Blood guards, Regular guards, Vidmo, Kobolds or No spawn in one shared pool. Enabled choices have equal chances; an empty pool keeps the animals. A group keeps its choice through travel and save loading until its natural respawn. Replacement chances default to 0%.
 <br />
 <br />[size=4][b][color=#E8C88A]Configuration[/color][/b][/size]
 <br />
 <br />Open [b]Mod Settings &gt; Less Wildlife[/b], choose your settings and press Apply. Population changes take effect on later area encounters.
 <br />
-<br />[list]
-<br />[*][b][color=#A8D5C2]Base wildlife group size:[/color][/b] 10% to 200% in 1% steps. Applies to groups that remain wildlife; default 100%. Replacement enemies use their own size ranges. Quantities are rounded to the nearest animal.[/*]
-<br />[*][b][color=#A8D5C2]Adjust boars:[/color][/b] On applies the selected percentage to ordinary boar herds. Off restores original values still controlled by this mod. Default: On.[/*]
-<br />[*][b][color=#A8D5C2]Adjust wolves:[/color][/b] The same independent choice for ordinary wolf packs. Default: On.[/*]
-<br />[*][b][color=#A8D5C2]Logging:[/color][/b] Choose Off, Error, Warning, Info or Debug. Warning is the default; Off is silent. Debug records detailed troubleshooting information in Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log.[/*]
-<br />[/list]
-<br />[color=#E6B980]Off disables population scaling for that species; it does not remove the animals.[/color] Already spawned animals are unaffected. Setting Base wildlife group size to 100% also restores original values still controlled by this mod. Changes made by the game or another mod are preserved.
+<br />In [b]Wildlife[/b], each species has a mode toggle. [b]Off[/b] shows its Wildlife group size slider (10–200%; default 100%). [b]On[/b] hides that slider and shows Replace boars or Replace wolves (0–100% chance). Hidden values are retained. Existing animals and saved encounter cycles stay unchanged.
 <br />
-<br />[size=3][b][color=#A8D5C2]Enemy group sizes[/color][/b][/size]
-<br />Set minimum and maximum members separately for Bandits, Regular guards, Blood guards, Vidmo and Kobolds. Both limits accept [b]1–10[/b] and are shared by boar and wolf replacements. Every count in the inclusive range has equal chance. Equal limits give a fixed count; [b]1–1[/b] gives one enemy. Reversed limits are swapped.
-<br />Defaults: Bandits [b]3–6[/b], Regular guards [b]2–4[/b], Blood guards [b]2–4[/b], Vidmo [b]1–2[/b], Kobolds [b]4–10[/b]. These counts override Base wildlife group size. No spawn remains a separate outcome.
+<br />[size=3][b][color=#A8D5C2]Enemy type[/color][/b][/size]
+<br />Enable Bandits, Regular guards, Blood guards, Vidmo or Kobolds to show minimum and maximum group-size sliders directly below that enemy. Disabled enemies hide their size controls. Both limits accept [b]1–10[/b] and are shared by boar and wolf replacements. Every count in the inclusive range has equal chance. Equal limits give a fixed count; [b]1–1[/b] gives one enemy. Reversed limits are swapped.
+<br />Defaults: Bandits [b]3–6[/b], Regular guards [b]2–4[/b], Blood guards [b]2–4[/b], Vidmo [b]1–2[/b], Kobolds [b]4–10[/b]. Replacement sizes are independent of wildlife percentages. No spawn remains a separate outcome.
 <br />The enemy type and count stay with the group through travel, save loading and partial kills. Changes apply to new groups and later natural respawns; groups saved by an earlier version keep their current cycle's sizing. Encounter locations and respawn timing remain controlled by the game.
 <br />
 <br />[size=3][b][color=#A8D5C2]Manual configuration[/color][/b][/size]
@@ -29,11 +23,12 @@
 <br />
 <br />[code]Dawnwalker&#92;Binaries&#92;Win64&#92;ue4ss&#92;Mods&#92;LessWildlife&#92;settings.ini[/code]
 <br />[code][LessWildlife]
-<br />populationPercent = 100
-<br />reduceBoars = 1
-<br />reduceWolves = 1
+<br />replaceBoars = 0
+<br />boarPopulationPercent = 100
+<br />replaceWolves = 0
+<br />wolfPopulationPercent = 100
 <br />logLevel = 2[/code]
-<br />Use an integer from 10 to 200 for populationPercent. For the species switches, use 0 for Off or 1 for On. logLevel uses 0–4 for Off, Error, Warning, Info and Debug. Keep the generated replacement keys; the included README lists them. Save and restart the game.
+<br />Use an integer from 10 to 200 for each wildlife percentage. For the species modes, use 0 for wildlife sizing or 1 for replacement chances. logLevel uses 0–4 for Off, Error, Warning, Info and Debug. Keep the generated replacement keys; the included README lists them. Save and restart the game.
 <br />
 <br />Unusually large areas or very dense bursts of encounters keep their current population values until a later encounter can be handled.
 <br />
@@ -91,7 +86,7 @@
 <br />
 <br />[b][color=#A8D5C2][url=https://www.nexusmods.com/thebloodofdawnwalker/mods/711]Wilder Wildlife - Customize Enemy Spawns[/url][/color][/b]
 <br />Customize ordinary boar and wolf populations and replace eligible groups with enemies.
-<br />[b]Highlights:[/b] Base wildlife group size from 10% to 200%; enemy group ranges from 1 to 10; separate replacement chances and pools; optional No spawn; quest-gated and scripted encounters stay unchanged.
+<br />[b]Highlights:[/b] Wildlife group sizes from 10% to 200%; conditional enemy-size sliders from 1 to 10; separate replacement chances with one shared enemy pool; optional No spawn; quest-gated and scripted encounters stay unchanged.
 <br />
 <br />[size=4][b][color=#E8C88A]Your view, your style[/color][/b][/size]
 <br />

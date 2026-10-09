@@ -74,9 +74,9 @@
       ],
       "pending": {
         "impact": "minor",
-        "rationale": "Compatible per-enemy inclusive group sizes with versioned atomic configuration, validated phase/active quantities and count journal preserving existing v1 cycles; verified published 0.1.0 baseline.",
+        "rationale": "Saved per-enemy group ranges plus user-requested conditional species modes and shared enemy pool; legacy preferences imported, existing encounter cycles retained.",
         "majorOverride": false,
-        "reviewedInputs": "a3cd7743d9a21b858a4c0c67ff7448a2135489524d163b5289fbb4a4832f70c1",
+        "reviewedInputs": "c7a0931a776289e6facc39b947c0c7c6edc39c2e60ab13b62c28f8e77578a038",
         "divergenceReviewed": false
       }
     }
