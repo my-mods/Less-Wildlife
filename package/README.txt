@@ -21,7 +21,7 @@ Replacement chances default to 0%. Enemy choices default to On and No spawn defa
 
 ## Wildlife
 
-Open Mod Settings > Less Wildlife > Wildlife. Boars and Wolves each have a mode toggle:
+Open Mod Settings > Wilder Wildlife - Customize Enemy Spawns > Wildlife. Boars and Wolves each have a mode toggle:
 
 - **Off:** shows Wildlife group size, a separate 10–200% slider for that species. 100% is normal. This changes members within each group, not the number of encounter locations.
 - **On:** hides wildlife sizing and shows Replace boars or Replace wolves, the chance from 0–100% to use the shared enemy pool. Groups that remain wildlife use their normal size in this mode.
@@ -44,7 +44,7 @@ For manual configuration, use the paired keys `banditGroupMin`/`banditGroupMax`,
 
 ## Boar and wolf replacement
 
-Open Mod Settings > Less Wildlife. In Wildlife, turn Boars or Wolves On and set Replace boars or Replace wolves. Choose the shared allowed outcomes in Enemy type, then Apply. Regular guards are standard longsword soldiers made hostile toward the player. Each enemy toggle adds that type to the shared random pool. All enabled outcomes have equal weight. For example, 60% with Bandits and Kobolds enabled leaves about 40% of groups as animals, 30% as bandits and 30% as kobolds. A single enabled outcome receives every successful replacement roll. An empty pool leaves the animals.
+Open Mod Settings > Wilder Wildlife - Customize Enemy Spawns. In Wildlife, turn Boars or Wolves On and set Replace boars or Replace wolves. Choose the shared allowed outcomes in Enemy type, then Apply. Regular guards are standard longsword soldiers made hostile toward the player. Each enemy toggle adds that type to the shared random pool. All enabled outcomes have equal weight. For example, 60% with Bandits and Kobolds enabled leaves about 40% of groups as animals, 30% as bandits and 30% as kobolds. A single enabled outcome receives every successful replacement roll. An empty pool leaves the animals.
 
 The chosen result belongs to the whole group and is stored with that game save. Travel, repeated overlap and loading the save reuse it. Settings changes apply to newly encountered groups and subsequent natural respawn cycles. Partial kills do not reroll the survivors. Replacement groups use their enemy-specific size range.
 

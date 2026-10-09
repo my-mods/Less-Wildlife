@@ -74,9 +74,9 @@
       ],
       "pending": {
         "impact": "minor",
-        "rationale": "Saved per-enemy group ranges plus user-requested conditional species modes and shared enemy pool; legacy preferences imported, existing encounter cycles retained.",
+        "rationale": "Saved per-enemy ranges, conditional species modes and shared enemy pool; menu display name now matches Wilder Wildlife - Customize Enemy Spawns. Legacy preferences and encounter cycles retained.",
         "majorOverride": false,
-        "reviewedInputs": "c7a0931a776289e6facc39b947c0c7c6edc39c2e60ab13b62c28f8e77578a038",
+        "reviewedInputs": "1fd8e36e7a06d206bb852569b9227a63bd40c4af539050737f68a9f8b9c8c373",
         "divergenceReviewed": false
       }
     }
