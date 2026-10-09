@@ -8,21 +8,21 @@
       "packageFormat": 1,
       "baseline": {
         "kind": "nexus",
-        "version": "0.1.0",
-        "normalizedVersion": "0.1.0",
-        "sourceCommit": "eda0cc252e5a0a7c8e374f0e2b16e3a6e3210211",
-        "sourceTag": null,
-        "archiveSha256": "ee5970696f91d622abce58de70f29a993f3812b1ddbca93123df60690965b178",
-        "sourceFingerprint": "286bbaae3ec80c8e0f61e41ce9e828893c2118e1dabd73ed6c8de9e598c10e2b",
-        "verifiedAt": "2026-10-09",
+        "version": "1.0.0",
+        "normalizedVersion": "1.0.0",
+        "sourceCommit": "657587c4ffed7833ee9649bb927e897aed8a57d7",
+        "sourceTag": "v1.0.0",
+        "archiveSha256": "1ff9e51c7bf5cb78b9f0878ebbcc9d4e8e5bc9d6cec5f2ba42b29fa1778e48df",
+        "verifiedAt": "2026-10-09T17:55:15.086Z",
         "nexus": {
           "game": "thebloodofdawnwalker",
           "pageId": "711",
           "modId": "41742787150535",
           "fileChainId": "8076453",
-          "versionId": "41742787152998",
-          "siteFileId": "3174"
-        }
+          "versionId": "41742787153027",
+          "siteFileId": "3203"
+        },
+        "sourceFingerprint": "ecf08e36fa1b8ee24bc2d3926a42c7410c0bdd9771d5e7f1b2ee16e1ed257b16"
       },
       "bindings": [
         {
@@ -73,11 +73,42 @@
         "VortexExtension"
       ],
       "pending": {
-        "impact": "major",
-        "rationale": "User-requested1.0 release: per-enemy size ranges and shared replacement selection; concise player changelog reviewed by user.",
-        "majorOverride": true,
+        "impact": "none",
+        "rationale": "Matches the verified Nexus release.",
+        "majorOverride": false,
         "reviewedInputs": "ecf08e36fa1b8ee24bc2d3926a42c7410c0bdd9771d5e7f1b2ee16e1ed257b16",
         "divergenceReviewed": false
+      },
+      "publication": {
+        "nexus": {
+          "destination": "nexus",
+          "verified": true,
+          "verifiedAt": "2026-10-09T17:55:15.086Z",
+          "version": "1.0.0",
+          "sourceCommit": "657587c4ffed7833ee9649bb927e897aed8a57d7",
+          "tag": "v1.0.0",
+          "archiveSha256": "1ff9e51c7bf5cb78b9f0878ebbcc9d4e8e5bc9d6cec5f2ba42b29fa1778e48df",
+          "nexus": {
+            "game": "thebloodofdawnwalker",
+            "pageId": "711",
+            "modId": "41742787150535",
+            "fileChainId": "8076453",
+            "versionId": "41742787153027",
+            "siteFileId": "3203"
+          },
+          "url": "https://www.nexusmods.com/thebloodofdawnwalker/mods/711?tab=files"
+        },
+        "github": {
+          "destination": "github",
+          "verified": true,
+          "verifiedAt": "2026-10-09T17:55:15.502Z",
+          "version": "1.0.0",
+          "sourceCommit": "657587c4ffed7833ee9649bb927e897aed8a57d7",
+          "tag": "v1.0.0",
+          "archiveSha256": "1ff9e51c7bf5cb78b9f0878ebbcc9d4e8e5bc9d6cec5f2ba42b29fa1778e48df",
+          "url": "https://github.com/my-mods/Less-Wildlife/releases/tag/v1.0.0",
+          "prerelease": false
+        }
       }
     }
   }
