@@ -1,7 +1,9 @@
 #include "ReplacementPolicy.hpp"
+#include "GroupCounts.hpp"
 #include "DecisionJournal.hpp"
 #include "RowIdentityCache.hpp"
 #include <random>
+#include <cmath>
 #include "Transaction.hpp"
 #include "WildlifeDefinitions.hpp"
 #include "AppearanceRepair.hpp"
@@ -56,7 +58,7 @@ void message(const std::wstring& value,int severity=4) { if(logLevel<severity)re
 void warning(const wchar_t* value) { if (logLevel>=2 && warningCount.fetch_add(1) < 8) message(value,2); }
 struct HookTimer {
     struct Sample { uint64_t count{},micros{},maximum{}; };
-    inline static std::array<Sample,7> samples{};
+    inline static std::array<Sample,8> samples{};
     inline static uint64_t reported{};
     unsigned index;bool enabled;
     std::chrono::steady_clock::time_point start;
@@ -67,7 +69,7 @@ struct HookTimer {
         auto& sample=samples[index];++sample.count;sample.micros+=us;sample.maximum=std::max(sample.maximum,us);
         const auto now=GetTickCount64();if(now-reported<10000)return;reported=now;
         try {
-            constexpr const wchar_t* names[]={L"table",L"appearance",L"activity",L"queue",L"eligibility",L"attempt",L"clock"};
+            constexpr const wchar_t* names[]={L"table",L"appearance",L"activity",L"queue",L"eligibility",L"attempt",L"clock",L"point capacity"};
             for(size_t i=0;i<samples.size();++i){const auto& s=samples[i];if(s.count)message(std::wstring(L"Hook elapsed (includes original, nested): ")+names[i]+L", calls="+std::to_wstring(s.count)+L", us="+std::to_wstring(s.micros)+L", max us="+std::to_wstring(s.maximum));}
         }catch(...){}
     }
@@ -108,7 +110,7 @@ struct TypeRef {
             && (!serial || serial == slot->GetSerialNumber());
     }
 };
-std::array<TypeRef, 20> types;
+std::array<TypeRef, 21> types;
 namespace EncounterRuntime { void invalidateArea(int32_t); }
 TypeRef observerType;
 std::atomic_bool listening{};
@@ -234,6 +236,7 @@ void bindSchema() {
     auto montageInner = montageProperty->GetInner();
     require(montageInner && montageInner->GetSize() == 40 && montageInner->GetClass().GetName() == L"SoftObjectProperty",
             "montage array element layout changed");
+    field(entryType,L"MontagelessActionPointNumberMultiplier",0xc0,4,L"FloatProperty");
     field(entryType, L"PopulationExtensionConfig", 0xc8, 16, L"StructProperty");
     definitionProperty = field(rowType, L"PawnDefinition", 0x30, 40, L"SoftClassProperty");
     field(rowType, L"PawnClass", 8, 40, L"SoftClassProperty");
@@ -244,6 +247,14 @@ void bindSchema() {
     field(rowType, L"NPCRole", 0x90, 1, L"EnumProperty");
     field(rowType, L"RespawnPolicy", 0xc0, 1, L"EnumProperty");
     require(UDataTable::MemberOffsets.at(L"RowMap") == 0x30, "data table map layout unavailable");
+    types[20].bind(find(L"/Script/Population.CommunityPhase"));
+    auto phaseType = static_cast<UStruct*>(types[20].object);
+    require(phaseType->GetPropertiesSize() == 0x40, "community phase layout");
+    field(phaseType,L"Quantity",0x20,4,L"UInt32Property");
+    auto phases = static_cast<FArrayProperty*>(field(rowType,L"Phases",0xd8,16,L"ArrayProperty"));
+    auto inner = phases->GetInner();
+    require(inner && inner->GetSize()==0x40 && inner->GetClass().GetName()==L"StructProperty"
+        && static_cast<FStructProperty*>(inner)->GetStruct()==phaseType,"community phase array element");
     bindDefinitionKeys();
 }
 
@@ -280,12 +291,20 @@ struct Value {
     ~Value() { property->DestroyAndFreeValue(data); }
     Value(const Value&) = delete; Value& operator=(const Value&) = delete;
 };
+unsigned char* phaseQuantity(void* row) {
+    const auto phases = read<Array>(row,0xd8);
+    require(arrayValid(phases,1) && phases.count==1,"group sizes require the single generated wildlife phase");
+    const auto quantity = read<uint32_t>(phases.data,0x20);
+    require(quantity>0 && quantity<=128,"generated wildlife phase count outside supported member bound");
+    return phases.data+0x20;
+}
 struct Operation {
+    CountEdit counts;
     void* destination; void* activeEntry; Value backup; Value montageBackup;
     void* reactions; void* faction; Value reactionsBackup; Value factionBackup;
     const Value* replacement; const Value* emptyMontages; const Value* nextReactions; const Value* nextFaction; bool wasHostile;
-    Operation(void* row, void* entry, const Value& next, const Value& noMontages, const Value& reaction, const Value& affiliation)
-        : destination(static_cast<unsigned char*>(row) + 0x30), activeEntry(entry), backup(definitionProperty), montageBackup(montageProperty),
+    Operation(void* row, void* entry, const Value& next, const Value& noMontages, const Value& reaction, const Value& affiliation, CountEdit countEdit = {})
+        : counts(countEdit), destination(static_cast<unsigned char*>(row) + 0x30), activeEntry(entry), backup(definitionProperty), montageBackup(montageProperty),
           reactions(static_cast<unsigned char*>(row) + 0x60), faction(static_cast<unsigned char*>(row) + 0x68),
           reactionsBackup(reactionsProperty), factionBackup(factionProperty),
           replacement(&next), emptyMontages(&noMontages), nextReactions(&reaction), nextFaction(&affiliation),
@@ -296,6 +315,7 @@ struct Operation {
         montageProperty->CopyCompleteValue(montageBackup.data, static_cast<unsigned char*>(activeEntry) + 0xb0);
     }
     void apply() {
+        counts.apply();
         definitionProperty->CopyCompleteValue(destination, replacement->data);
         reactionsProperty->CopyCompleteValue(reactions, nextReactions->data);
         factionProperty->CopyCompleteValue(faction, nextFaction->data);
@@ -306,11 +326,12 @@ struct Operation {
         montageProperty->CopyCompleteValue(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data);
     }
     bool readbackMatches() {
-        return definitionKey(destination) == definitionKey(replacement->data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60)
+        return counts.readbackMatches() && definitionKey(destination) == definitionKey(replacement->data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60)
             && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, emptyMontages->data)
             && reactionsProperty->Identical(reactions, nextReactions->data) && factionProperty->Identical(faction, nextFaction->data);
     }
     void restore() {
+        counts.restore();
         definitionProperty->CopyCompleteValue(destination, backup.data);
         reactionsProperty->CopyCompleteValue(reactions, reactionsBackup.data);
         factionProperty->CopyCompleteValue(faction, factionBackup.data);
@@ -318,7 +339,7 @@ struct Operation {
         montageProperty->CopyCompleteValue(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data);
     }
     bool restored() {
-        return definitionKey(destination) == definitionKey(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile
+        return counts.restored() && definitionKey(destination) == definitionKey(backup.data) && hostileProperty->GetPropertyValue(static_cast<unsigned char*>(activeEntry) + 0x60) == wasHostile
             && montageProperty->Identical(static_cast<unsigned char*>(activeEntry) + 0xb0, montageBackup.data)
             && reactionsProperty->Identical(reactions, reactionsBackup.data) && factionProperty->Identical(faction, factionBackup.data);
     }
@@ -333,6 +354,7 @@ struct OperationList {
 
 #include "EncounterRuntime.inl"
 #include "EquipmentRepair.inl"
+#include "GroupPointCapacity.inl"
 
 void transform(UObject* area) {
     for (const auto& type : types) require(type.valid(), "population metadata expired");
@@ -404,6 +426,7 @@ void transform(UObject* area) {
     for (size_t i = 0; i < plannedCount; ++i) {
         auto& plan = planned[i];
         auto saved = DecisionJournal::locate(store, plan.key);
+        EncounterRuntime::rememberCounts(plan.key,plan.row,plan.entry);
         auto decision = restoreOrBegin(plan.key, saved.decision, EncounterRuntime::options(plan.key.definition), EncounterRuntime::uniform);
         // Adopt already converted cached rows from the earlier bandit helper.
         if (!saved.decision && definitionKey(static_cast<unsigned char*>(plan.row) + 0x30) == banditKey)
@@ -424,7 +447,7 @@ void transform(UObject* area) {
                 "cached encounter changed before registration");
         } else {
             if (!noMontages) noMontages = std::make_unique<Value>(montageProperty);
-            operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, *noMontages, *reactions, *faction));
+            operations.values.push_back(std::make_unique<Operation>(plan.row, plan.entry, *replacement, *noMontages, *reactions, *faction, EncounterRuntime::countEdit(plan.row,decision,false)));
         }
         prepared.push_back({std::move(saved), decision, std::move(replacement), std::move(reactions), std::move(faction)});
     }
@@ -438,17 +461,18 @@ void transform(UObject* area) {
         // The row transaction retained animals. Commit that result to this save
         // as well, so a later overlap cannot silently roll again.
         for (auto& item : prepared) {
-            auto original = item.decision; original.outcome = Outcome::Original; original.phase = CyclePhase::Active;
+            auto original = item.decision; original.outcome = Outcome::Original; original.phase = CyclePhase::Active; original.groupCount = 0;
             DecisionJournal::save(store, item.saved, original);
         }
         if (logging) ++stats.rolledBack;
         if (result == TransactionResult::RollbackFailed) { failed = true; if(logLevel>=1&&warningCount.fetch_add(1)<8)message(L"Replacement disabled after an unverifiable rollback.",1); }
         return;
     }
+    for (auto& item : prepared) EncounterRuntime::acceptCounts(item.decision);
     if (logging) {
         ++stats.transformed;
         if (stats.transformed <= 12) message(L"Saved encounter outcomes: " + area->GetFullName() + L"; groups=" + std::to_wstring(plannedCount)
-            + L"; original identities, counts and respawn policies retained.");
+            + L"; saved per-enemy sizes; original identities and respawn policies retained.");
     }
 }
 
@@ -578,6 +602,7 @@ bool start() {
         active = true;
         require(MH_EnableHook(appearanceTarget) == MH_OK, "appearance initializer hook activation failed");
         require(MH_EnableHook(target) == MH_OK, "population builder hook activation failed");
+        GroupPointCapacity::start();
         EncounterRuntime::start();
         RespawnObserver::start();
         require(RespawnObserver::enabled, "encounter lifecycle hooks unavailable");
@@ -585,6 +610,7 @@ bool start() {
         return true;
     } catch (const std::exception& error) {
         active = false;
+        GroupPointCapacity::stop();
         RespawnObserver::stop();
         EncounterRuntime::stop();
         if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
@@ -596,6 +622,7 @@ bool start() {
 }
 void stop() {
     active = false;
+    GroupPointCapacity::stop();
     RespawnObserver::stop();
     EncounterRuntime::stop();
     if (target) { MH_DisableHook(target); MH_RemoveHook(target); target = nullptr; }
@@ -608,14 +635,19 @@ void stop() {
 using namespace RC;
 class LessWildlifeMod final : public CppUserModBase {
 public:
-    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.1.0"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
+    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"0.2.0-dev"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
-        lua.register_function("_LWConfigureReplacementLogV2", [](const auto& l) {
+        lua.register_function("_LWConfigureReplacementSizesV3", [](const auto& l) {
             // LuaMadeSimple removes each consumed argument; every read is index 1.
             auto boars = l.get_integer(1); auto wolves = l.get_integer(1);
             auto boarPool = l.get_integer(1); auto wolfPool = l.get_integer(1); auto logs = l.get_integer(1);
-            LessWildlife::EncounterRuntime::configure(boars, wolves, boarPool, wolfPool);
+            auto sizes = LessWildlife::Options{}.sizes;
+            for (unsigned index : {0u, 5u, 1u, 2u, 3u}) {
+                auto low = l.get_integer(1); auto high = l.get_integer(1);
+                sizes[index] = LessWildlife::normalizeRange(low, high);
+            }
+            LessWildlife::EncounterRuntime::configure(boars, wolves, boarPool, wolfPool, sizes);
             LessWildlife::logLevel = static_cast<int>(std::clamp<int64_t>(logs,0,4)); LessWildlife::logging = logs == 4; return 0;
         });
         lua.register_function("_LWStartReplacementV1", [](const auto& l) { l.set_bool(LessWildlife::start()); return 1; });

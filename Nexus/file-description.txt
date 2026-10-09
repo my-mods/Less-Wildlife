@@ -1,1 +1,1 @@
-Customize boar and wolf populations from 10% to 200%. Set separate replacement chances for Bandits, Regular guards, Blood guards, Vidmo, Kobolds or No spawn. Group choices persist through save loading and reroll on natural respawn.
+Set wildlife group size from 10–200% and replacement enemy counts from 1–10 per type. Configure separate boar and wolf replacement pools and chances. Enemy choices and counts persist through save loading until natural respawn.

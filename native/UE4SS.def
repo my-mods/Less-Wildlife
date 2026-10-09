@@ -65,3 +65,5 @@ EXPORTS
     ?GetFuncPtr@UFunction@Unreal@RC@@QEAAP6AXPEAVUObject@23@AEAUFFrame@23@PEAX@ZXZ
     ?GetKeyProp@FMapProperty@Unreal@RC@@QEAAAEAPEAVFProperty@23@XZ
     ?GetValueProp@FMapProperty@Unreal@RC@@QEAAAEAPEAVFProperty@23@XZ
+
+    ?GetStruct@FStructProperty@Unreal@RC@@QEAAAEAV?$TObjectPtr@VUScriptStruct@Unreal@RC@@@23@XZ

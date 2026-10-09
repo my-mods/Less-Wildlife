@@ -24,6 +24,8 @@ struct EncounterDecision {
     std::uint64_t cycle{};
     Outcome outcome{Outcome::Original};
     CyclePhase phase{CyclePhase::Active};
+    // Zero preserves a legacy/base-sized cycle. Positive counts are saved targets.
+    std::uint32_t groupCount{};
     bool operator==(const EncounterDecision&) const = default;
 };
 
@@ -31,7 +33,8 @@ inline bool valid(const EncounterKey& key) {
     return (key.area[0] || key.area[1] || key.area[2] || key.area[3]) && key.row < 64 && key.definition < 10;
 }
 inline bool valid(const EncounterDecision& decision) {
-    return valid(decision.key) && static_cast<unsigned>(decision.outcome) <= static_cast<unsigned>(Outcome::Guard)
+    return valid(decision.key) && decision.groupCount <= groupLimit
+        && (isEnemy(decision.outcome) || decision.groupCount == 0) && static_cast<unsigned>(decision.outcome) <= static_cast<unsigned>(Outcome::Guard)
         && static_cast<unsigned>(decision.phase) <= static_cast<unsigned>(CyclePhase::Completed)
         && (decision.outcome == Outcome::None
             ? decision.phase != CyclePhase::Active : decision.phase != CyclePhase::SuppressionPending);
@@ -41,7 +44,17 @@ template<class Uniform>
 EncounterDecision beginCycle(const EncounterKey& key, std::uint64_t cycle, const Options& options, Uniform&& uniform) {
     if (!valid(key)) throw std::invalid_argument("encounter identity");
     const auto outcome = choose(options, uniform);
-    return {key, cycle, outcome, outcome == Outcome::None ? CyclePhase::SuppressionPending : CyclePhase::Active};
+    unsigned count = 0;
+    if (isEnemy(outcome)) {
+        const auto range = options.sizes.at(static_cast<unsigned>(outcome) - 1);
+        if (!range.minimum || range.minimum > range.maximum || range.maximum > groupLimit)
+            throw std::invalid_argument("enemy group range");
+        const auto width = range.maximum - range.minimum + 1;
+        const auto draw = width == 1 ? 0 : uniform(width);
+        if (draw < 0 || static_cast<std::uint64_t>(draw) >= width) throw std::out_of_range("group size random draw");
+        count = range.minimum + static_cast<unsigned>(draw);
+    }
+    return {key, cycle, outcome, outcome == Outcome::None ? CyclePhase::SuppressionPending : CyclePhase::Active, count};
 }
 
 // Travel, repeated overlap and restoration always reuse the saved record.
@@ -93,11 +106,12 @@ inline DecisionBytes encodeDecision(const EncounterDecision& decision) {
     auto put = [&](size_t offset, std::uint64_t value, size_t width) {
         for (size_t i = 0; i < width; ++i) bytes[offset + i] = static_cast<std::uint8_t>(value >> (i * 8));
     };
-    bytes[0] = 'L'; bytes[1] = 'W'; bytes[2] = 'C'; bytes[3] = 1;
+    bytes[0] = 'L'; bytes[1] = 'W'; bytes[2] = 'C'; bytes[3] = decision.groupCount ? 2 : 1;
     for (size_t i = 0; i < 4; ++i) put(4 + i * 4, decision.key.area[i], 4);
     bytes[20] = decision.key.row; bytes[21] = decision.key.definition;
     bytes[22] = static_cast<std::uint8_t>(decision.outcome); bytes[23] = static_cast<std::uint8_t>(decision.phase);
     put(24, decision.cycle, 8);
+    put(32, decision.groupCount, 4);
     put(36, decisionChecksum(bytes), 4);
     return bytes;
 }
@@ -107,13 +121,14 @@ inline std::optional<EncounterDecision> decodeDecision(const DecisionBytes& byte
         for (size_t i = 0; i < width; ++i) value |= std::uint64_t(bytes[offset + i]) << (i * 8);
         return value;
     };
-    if (bytes[0] != 'L' || bytes[1] != 'W' || bytes[2] != 'C' || bytes[3] != 1
-        || get(32, 4) != 0 || get(36, 4) != decisionChecksum(bytes)) return std::nullopt;
+    if (bytes[0] != 'L' || bytes[1] != 'W' || bytes[2] != 'C' || (bytes[3] != 1 && bytes[3] != 2)
+        || (bytes[3] == 1 && get(32, 4) != 0) || (bytes[3] == 2 && (get(32, 4) == 0 || get(32, 4) > groupLimit)) || get(36, 4) != decisionChecksum(bytes)) return std::nullopt;
     EncounterDecision result;
     for (size_t i = 0; i < 4; ++i) result.key.area[i] = static_cast<std::uint32_t>(get(4 + i * 4, 4));
     result.key.row = bytes[20]; result.key.definition = bytes[21];
     result.outcome = static_cast<Outcome>(bytes[22]); result.phase = static_cast<CyclePhase>(bytes[23]);
     result.cycle = get(24, 8);
+    result.groupCount = static_cast<std::uint32_t>(get(32, 4));
     return valid(result) ? std::optional{result} : std::nullopt;
 }
 }

@@ -1,8 +1,5 @@
-# Wilder Wildlife - Customize Enemy Spawns 0.1.0
+# Wilder Wildlife - Customize Enemy Spawns 0.2.0-dev
 
-- Add separate 0–100% replacement chances for boar herds and wolf packs.
-- Choose Bandits, Blood guards, Regular guards, Vidmo, Kobolds or No spawn independently for each species. Enabled outcomes have equal chances; an empty selection keeps the animals.
-- Keep each group’s choice through travel and save loading, with a new roll on natural respawn. No spawn leaves the group empty for one cycle.
-- Keep quest-gated and scripted encounters unchanged.
-- Fix replacement enemies failing to appear, missing their weapons, inheriting animal poses or behaving as non-hostile creatures.
-- Choose Off, Error, Warning, Info or Debug logging; Warning is the default.
+- Set a separate 1–10 member range for Bandits, Regular guards, Blood guards, Vidmo and Kobolds. Equal limits give a fixed group size.
+- Keep each replacement group’s chosen size through travel and save loading; new natural cycles use the current ranges.
+- Rename Population to Base wildlife group size and use it only for groups that remain wildlife.

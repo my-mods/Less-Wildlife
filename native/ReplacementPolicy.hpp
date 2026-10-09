@@ -9,9 +9,22 @@ enum class Outcome : std::uint8_t { Original = 0, Bandit = 1, BloodGuard = 2, Vi
 constexpr bool usesHostileHumanProfile(Outcome outcome) {
     return outcome == Outcome::BloodGuard || outcome == Outcome::Guard;
 }
+struct GroupRange {
+    unsigned minimum = 1, maximum = 1;
+    bool operator==(const GroupRange&) const = default;
+};
+constexpr unsigned groupLimit = 10;
+constexpr GroupRange normalizeRange(std::int64_t a, std::int64_t b) {
+    auto clamp = [](std::int64_t n) { return static_cast<unsigned>(n < 1 ? 1 : n > groupLimit ? groupLimit : n); };
+    auto low = clamp(a), high = clamp(b);
+    return low <= high ? GroupRange{low, high} : GroupRange{high, low};
+}
+constexpr bool isEnemy(Outcome outcome) { return outcome != Outcome::Original && outcome != Outcome::None; }
 struct Options {
     unsigned chance = 0;
     std::array<bool, 6> allowed{true, true, true, true, false, true};
+    // Saved outcome order: bandit, blood guard, vidmo, kobold, none, guard.
+    std::array<GroupRange, 6> sizes{{{3,6},{2,4},{1,2},{4,10},{1,1},{2,4}}};
 };
 
 // The caller owns the encounter's saved decision and respawn cycle. This

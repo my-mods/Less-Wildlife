@@ -42,11 +42,14 @@ class DecisionJournal {
             member |= std::uint32_t(bytes[32 + i]) << (i * 8);
             check |= std::uint32_t(bytes[36 + i]) << (i * 8);
         }
-        if (check != decisionChecksum(bytes) || (member != 0) != memberRecord) return {};
+        if (check != decisionChecksum(bytes)) return {};
+        if (memberRecord && (!member || bytes[3] != 1)) return {};
         // Member records use the reserved word in their separate namespace.
         // Keep ordinary encounter records and their v1 codec byte-identical.
-        for (unsigned i = 32; i < 36; ++i) bytes[i] = 0;
-        checksum(bytes);
+        if (memberRecord) {
+            for (unsigned i = 32; i < 36; ++i) bytes[i] = 0;
+            checksum(bytes);
+        } else member = 0;
         auto decision = decodeDecision(bytes);
         return decision ? std::optional{Record{*decision, member}} : std::nullopt;
     }
@@ -79,8 +82,10 @@ public:
         if (!valid(next) || (slot.decision && slot.decision->key != next.key)) throw std::invalid_argument("journal decision identity");
         auto current = locate(store, next.key, slot.member);
         if (current.root != slot.root || current.decision != slot.decision) throw std::runtime_error("encounter journal changed during update");
-        auto bytes = encodeDecision(next);
-        for (unsigned i = 0; i < 4; ++i) bytes[32 + i] = static_cast<std::uint8_t>(slot.member >> (i * 8));
+        auto persisted = next;
+        if (slot.member) persisted.groupCount = 0; // Equipment v1 remains byte-identical.
+        auto bytes = encodeDecision(persisted);
+        if (slot.member) for (unsigned i = 0; i < 4; ++i) bytes[32 + i] = static_cast<std::uint8_t>(slot.member >> (i * 8));
         checksum(bytes);
         const unsigned target = slot.active ^ 1;
         for (unsigned i = 0; i < words; ++i) {
@@ -91,14 +96,14 @@ public:
             // absent would let a later record claim a colliding hashed key.
             if (!slot.decision) store.set(name(slot.root, (target ^ 1) * words + i), std::bit_cast<std::int32_t>(word));
         }
-        const Record expected{next, slot.member};
+        const Record expected{persisted, slot.member};
         if (bank(store, slot.root, target, slot.member != 0) != std::optional{expected}) throw std::runtime_error("encounter decision readback failed");
         if (!slot.decision && bank(store, slot.root, target ^ 1, slot.member != 0) != std::optional{expected})
             throw std::runtime_error("encounter journal reservation failed");
         store.set(name(slot.root, 20), std::bit_cast<std::int32_t>(headMagic | target));
         if (store.get(name(slot.root, 20)) != std::optional{std::bit_cast<std::int32_t>(headMagic | target)})
             throw std::runtime_error("encounter journal commit failed");
-        slot.decision = next; slot.active = target;
+        slot.decision = persisted; slot.active = target;
     }
 };
 }

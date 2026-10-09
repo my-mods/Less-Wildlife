@@ -6,7 +6,7 @@
   "author": "oOCamilleOo",
   "uploader": "oOCamilleOo",
   "language": "English",
-  "version": "0.1.0",
+  "version": "0.2.0-dev",
   "tags": [
     "Gameplay",
     "Quality of Life",
@@ -21,12 +21,12 @@
   "file": {
     "name": "Wilder Wildlife",
     "archive": "Less-Wildlife.zip",
-    "version": "0.1.0",
+    "version": "0.2.0-dev",
     "category": "main",
     "allowModManagerDownload": true,
     "primaryModManagerDownload": true,
     "showRequirementsPopUp": true,
-    "description": "Customize boar and wolf populations from 10% to 200%. Set separate replacement chances for Bandits, Regular guards, Blood guards, Vidmo, Kobolds or No spawn. Group choices persist through save loading and reroll on natural respawn."
+    "description": "Set wildlife group size from 10–200% and replacement enemy counts from 1–10 per type. Configure separate boar and wolf replacement pools and chances. Enemy choices and counts persist through save loading until natural respawn."
   },
   "requirements": [
     {

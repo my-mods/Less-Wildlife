@@ -8,19 +8,20 @@
       "packageFormat": 1,
       "baseline": {
         "kind": "nexus",
-        "version": "0.0.0",
-        "normalizedVersion": "0.0.0",
-        "sourceCommit": "d93711c092579cdbf0f14e453394b14e28878783",
+        "version": "0.1.0",
+        "normalizedVersion": "0.1.0",
+        "sourceCommit": "eda0cc252e5a0a7c8e374f0e2b16e3a6e3210211",
         "sourceTag": null,
-        "archiveSha256": "ea7bfda8a28e650296dc8ac389e032f2d42143a612e93f5520c55df7b04bb3c8",
-        "verifiedAt": "2026-10-07T12:13:13.9964442Z",
+        "archiveSha256": "ee5970696f91d622abce58de70f29a993f3812b1ddbca93123df60690965b178",
+        "sourceFingerprint": "286bbaae3ec80c8e0f61e41ce9e828893c2118e1dabd73ed6c8de9e598c10e2b",
+        "verifiedAt": "2026-10-09",
         "nexus": {
           "game": "thebloodofdawnwalker",
           "pageId": "711",
           "modId": "41742787150535",
           "fileChainId": "8076453",
-          "versionId": "41742787152876",
-          "siteFileId": "3052"
+          "versionId": "41742787152998",
+          "siteFileId": "3174"
         }
       },
       "bindings": [
@@ -73,9 +74,9 @@
       ],
       "pending": {
         "impact": "minor",
-        "rationale": "Complete direct Nexus baseline delta includes compatible replacement pools, saved group choices, hostile guards, No spawn and logging levels. Public rename updates display title, images, README and promotional copy, preserving archive, runtime, menu and settings identities.",
+        "rationale": "Compatible per-enemy inclusive group sizes with versioned atomic configuration, validated phase/active quantities and count journal preserving existing v1 cycles; verified published 0.1.0 baseline.",
         "majorOverride": false,
-        "reviewedInputs": "43527f9854a9e0e078af39e4938b1e3b9208723943f1ea4df9b23ca4054f3c5e",
+        "reviewedInputs": "a3cd7743d9a21b858a4c0c67ff7448a2135489524d163b5289fbb4a4832f70c1",
         "divergenceReviewed": false
       }
     }

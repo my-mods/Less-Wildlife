@@ -24,12 +24,12 @@ UE4SS.def declares only the required host imports. The DLL exports
 
 ## Runtime integration
 
-The native helper has seven required hooks: generated population-table construction,
+The native helper has eight required hooks: generated population-table construction,
 humanoid appearance initialization, activity binding for suppression, death scheduling,
-respawn eligibility, attempt dispatch and game-clock advancement. Required-hook failure
+respawn eligibility, attempt dispatch, game-clock advancement and group point-capacity generation. Required-hook failure
 removes the partial installation and leaves Lua population adjustment available.
-`_LWConfigureReplacementV1` accepts boar chance, wolf chance, boar pool bitmask,
-wolf pool bitmask and Logging. Lua consumes these in order; each pool has six bits. Existing bit positions and saved outcome IDs stay fixed;
+`_LWConfigureReplacementSizesV3` accepts boar chance, wolf chance, boar pool bitmask,
+wolf pool bitmask, Logging, then minimum/maximum pairs for bandits, regular guards, blood guards, vidmo and kobolds. Lua consumes these in order; each pool has six bits. Existing bit positions and saved outcome IDs stay fixed;
 Regular guards use the appended bit 5 / outcome ID 6, after No spawn.
 
 `ReplacementPolicy.hpp` selects once per whole group. `EncounterCycle.hpp` defines
@@ -55,7 +55,7 @@ and engine pointers are never cached there. Original and No spawn table outcomes
 retain journal processing while avoiding unused FProperty preparation. Repeated
 area registrations reuse live indexed handles and retain deletion invalidation.
 
-Generated row names, group quantities, locations and respawn policies stay intact.
+Generated row names, locations and respawn policies stay intact. Replacement counts are selected from inclusive 1–10 ranges, saved with the outcome in group codec v2, and applied to the generated phase and active entry. Codec v1 cycles keep their existing sizing until completion. Source wildlife quantities remain owned by Lua scaling.
 Definitions and row AI overrides use engine FProperty allocation, import, copy,
 comparison and destruction. Regular guards and blood guards receive the hostile human reactions and
 global-bandit faction; other outcomes use their stock profiles. Foreign overrides,
@@ -74,6 +74,8 @@ bookkeeping. The original binding function runs once and rejects the completed s
 The game retains its dead-member persistence and next-day queue. No zero quantities,
 live actor destruction, artificial clock advancement or forced respawning are used.
 
+`GroupPointCapacity.inl` wraps the normal point generator. A checked single CommunityPhase quantity must agree with the active entry range. Temporary generated-phase/active-entry counts provision at least ten points, retaining larger original capacity, and are restored before spawning. Later cycles reuse the same owned capacity. Normal navigation validation remains in the game. Counts share profile transaction backup, readback and rollback; Original restores the saved wildlife quantities.
+
 Replacement rows clear copied animal montage arrays before point generation. For
 later enemy cycles, existing points belonging to that group clear their montage
 through the normal point setter, with backup/readback/rollback. Locations and other
@@ -88,7 +90,7 @@ the helper does not write inventory contents. Separate equipment journal records
 include the persistent member ID and mark initialization once per encounter cycle,
 including already armed members. Subsequent loads preserve disarming and looting.
 These records use their own namespace and the reserved word in the checked record;
-the original encounter journal format and namespace remain unchanged.
+equipment v1 records remain byte-identical in their separate namespace. Group records read v1 and v2; v2 uses the reserved word for the saved count.
 
 `NativeContract.hpp`, `RespawnContract.hpp` and `LifecycleContract.hpp` check the
 instruction ranges, call sites and layout-dependent functions actually used.
@@ -101,7 +103,7 @@ and generated point lists to 4096. Builder work has a 128-entry and soft 2 ms fr
 budget; deferred tables retain their current values and may be revisited normally.
 
 Logging Off skips optional diagnostics and timing, while required saved-decision
-processing stays active. Logging On retains the bounded 128-key observation cache,
+processing stays active. Logging Debug retains the bounded 128-key observation cache,
 one eligibility sample per group per second, and at most 256 samples or soft 2 ms
 of capture per second. Details are capped at 12 per ten seconds with aggregated
 counts/timings. These are work bounds, not measured frame-time results.

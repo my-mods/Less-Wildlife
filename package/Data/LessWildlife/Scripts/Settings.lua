@@ -1,17 +1,28 @@
 -- File-backed settings shared by startup and the optional Mod Setting Menu.
 local M={}
-M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','boarBandits','boarGuards','boarBloodGuards','boarVidmo','boarKobolds','boarNoSpawn','wolfBandits','wolfGuards','wolfBloodGuards','wolfVidmo','wolfKobolds','wolfNoSpawn','logLevel'}
-M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,boarBandits=1,boarGuards=1,boarBloodGuards=1,boarVidmo=1,boarKobolds=1,boarNoSpawn=0,wolfBandits=1,wolfGuards=1,wolfBloodGuards=1,wolfVidmo=1,wolfKobolds=1,wolfNoSpawn=0,logLevel=2}
+M.keys={'populationPercent','reduceBoars','reduceWolves','boarReplacementChance','wolfReplacementChance','boarBandits','boarGuards','boarBloodGuards','boarVidmo','boarKobolds','boarNoSpawn','wolfBandits','wolfGuards','wolfBloodGuards','wolfVidmo','wolfKobolds','wolfNoSpawn','banditGroupMin','banditGroupMax','guardGroupMin','guardGroupMax','bloodGuardGroupMin','bloodGuardGroupMax','vidmoGroupMin','vidmoGroupMax','koboldGroupMin','koboldGroupMax','logLevel'}
+M.defaults={populationPercent=100,reduceBoars=1,reduceWolves=1,boarReplacementChance=0,wolfReplacementChance=0,boarBandits=1,boarGuards=1,boarBloodGuards=1,boarVidmo=1,boarKobolds=1,boarNoSpawn=0,wolfBandits=1,wolfGuards=1,wolfBloodGuards=1,wolfVidmo=1,wolfKobolds=1,wolfNoSpawn=0,banditGroupMin=3,banditGroupMax=6,guardGroupMin=2,guardGroupMax=4,bloodGuardGroupMin=2,bloodGuardGroupMax=4,vidmoGroupMin=1,vidmoGroupMax=2,koboldGroupMin=4,koboldGroupMax=10,logLevel=2}
 local function value(key,raw)
  local n=tonumber(raw)
  if not n or n~=n or n%1~=0 then return end
- if key=='populationPercent' then
+ if key:match('GroupMin$') or key:match('GroupMax$') then
+  return math.max(1,math.min(10,n))
+ elseif key=='populationPercent' then
   if n>=1 and n<=200 then return math.max(10,n) end
  elseif key=='logLevel' then
   if n>=0 and n<=4 then return n end
  elseif key=='boarReplacementChance' or key=='wolfReplacementChance' then
   if n>=0 and n<=100 then return n end
  elseif n==0 or n==1 then return n end
+end
+function M.ranges(values)
+ local result={}
+ for _,key in ipairs({'bandit','guard','bloodGuard','vidmo','kobold'})do
+  local a=value(key..'GroupMin',values[key..'GroupMin']) or M.defaults[key..'GroupMin']
+  local b=value(key..'GroupMax',values[key..'GroupMax']) or M.defaults[key..'GroupMax']
+  result[#result+1]=math.min(a,b);result[#result+1]=math.max(a,b)
+ end
+ return result
 end
 local function lines(data)
  local result,pos={},1

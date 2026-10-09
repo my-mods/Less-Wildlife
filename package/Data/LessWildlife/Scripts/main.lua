@@ -24,6 +24,8 @@ local reduceBoars,reduceWolves=true,true
 local boarReplacementChance,wolfReplacementChance,settingsReady=0,0,false
 local pools={boar=47,wolf=47}
 local outcomeValues={}
+local sizeSettings=dofile(here..'Settings.lua')
+local groupRanges=sizeSettings.ranges({})
 -- Append new pool bits so existing native settings and saved outcome IDs agree.
 local outcomeNames={'Bandits','BloodGuards','Vidmo','Kobolds','NoSpawn','Guards'}
 local function updatePools(values)
@@ -61,12 +63,13 @@ local function readSettings()
  if ready then logLevel=values.logLevel or logLevel end
  ModDiagnosticLevel=logLevel;debugLogging=logLevel==4
  updatePools(values)
+ groupRanges=sizeSettings.ranges(values)
  boarReplacementChance,wolfReplacementChance,settingsReady=values.boarReplacementChance,values.wolfReplacementChance,ready
  if not ready then log('Settings upgrade failed; replacement stays Off: '..tostring(why)) end
 end
 local function configureReplacement()
- if type(_LWConfigureReplacementLogV2)=='function' then
-  _LWConfigureReplacementLogV2(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,pools.boar,pools.wolf,logLevel)
+ if type(_LWConfigureReplacementSizesV3)=='function' then
+  _LWConfigureReplacementSizesV3(settingsReady and boarReplacementChance or 0,settingsReady and wolfReplacementChance or 0,pools.boar,pools.wolf,logLevel,table.unpack(groupRanges))
  end
 end
 local function record(key,n)
@@ -218,6 +221,7 @@ pcall(function()
   wolfReplacementChance=chance(values.wolfReplacementChance) or wolfReplacementChance
   boarReplacementChance=chance(values.boarReplacementChance) or boarReplacementChance
   updatePools(values)
+  groupRanges=sizeSettings.ranges(values)
   configureReplacement()
   stats={};lastSummary=nil
  end)
@@ -232,7 +236,7 @@ initialize=function()
   system=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
   assert(valid(system),'KismetSystemLibrary unavailable')
   frameFn=assert(method(system,'GetFrameCount'),'GetFrameCount unavailable')
-  if type(_LWStartReplacementV1)=='function' and type(_LWConfigureReplacementLogV2)=='function' then
+  if type(_LWStartReplacementV1)=='function' and type(_LWConfigureReplacementSizesV3)=='function' then
    if not _LWStartReplacementV1() then log('Native replacement unavailable; population controls remain active.') end
   elseif boarReplacementChance~=0 or wolfReplacementChance~=0 then log('Native replacement helper is missing or outdated; population controls remain active.') end
   local before,after=RegisterHook(HOOK,function(context)

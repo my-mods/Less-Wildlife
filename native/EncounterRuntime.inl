@@ -13,7 +13,7 @@ struct GuidHash {
         size_t h = 2166136261u; for (auto word : value) { h ^= word; h *= 16777619u; } return h;
     }
 };
-struct AreaHandle { TypeRef object; std::array<uint32_t, 4> guid; std::array<uint64_t, 10> fresh{}; };
+struct AreaHandle { TypeRef object; std::array<uint32_t, 4> guid; std::array<uint64_t, 10> fresh{}; std::array<RowCounts,64> counts{}; };
 std::mutex areaMutex;
 std::vector<std::shared_ptr<AreaHandle>> areaSlots;
 std::unordered_map<std::array<uint32_t, 4>, size_t, GuidHash> areaByGuid;
@@ -63,18 +63,25 @@ template<class T> T engine(uint32_t rva) {
     return reinterpret_cast<T>(reinterpret_cast<unsigned char*>(GetModuleHandleW(nullptr)) + rva);
 }
 unsigned uniform(unsigned bound) { return std::uniform_int_distribution<unsigned>(0, bound - 1)(random); }
-void configure(int64_t boars, int64_t wolves, int64_t boarPool, int64_t wolfPool) {
+std::mutex configMutex;
+std::array<GroupRange,6> configuredSizes = Options{}.sizes;
+void configure(int64_t boars, int64_t wolves, int64_t boarPool, int64_t wolfPool,
+    const std::array<GroupRange,6>& sizes = Options{}.sizes) {
+    std::lock_guard lock(configMutex);
+    for (auto size : sizes) require(size.minimum >= 1 && size.minimum <= size.maximum && size.maximum <= groupLimit, "enemy group size configuration");
     if (boars < 0 || boars > 100 || wolves < 0 || wolves > 100 || boarPool < 0 || boarPool > 63 || wolfPool < 0 || wolfPool > 63) {
         replacementOptions = 0; replacementMask = 0; configurationReady = false; return;
     }
     replacementOptions = uint64_t(boars) | (uint64_t(wolves) << 8) | (uint64_t(boarPool) << 16) | (uint64_t(wolfPool) << 24);
     replacementMask = (boars && boarPool ? 1 : 0) | (wolves && wolfPool ? 2 : 0);
+    configuredSizes = sizes;
     configurationReady = true;
 }
 Options options(uint8_t definition) {
+    std::lock_guard lock(configMutex);
     const auto settings = replacementOptions.load();
     const bool wolf = wildlifeDefinitions.at(definition).species == Species::Wolf;
-    Options result; result.chance = (settings >> (wolf ? 8 : 0)) & 255;
+    Options result; result.sizes = configuredSizes; result.chance = (settings >> (wolf ? 8 : 0)) & 255;
     const auto mask = (settings >> (wolf ? 24 : 16)) & 63;
     for (unsigned i = 0; i < result.allowed.size(); ++i) result.allowed[i] = (mask & (uint64_t{1} << i)) != 0;
     return result;
@@ -262,10 +269,50 @@ void prepareHostility(const EncounterDecision& decision, Value& reactions, Value
     end = factionProperty->ImportText_Direct(L"(TagName=\"RebelAI.Faction.GlobalBandit\")", faction.data, owner, 0, nullptr);
     require(end && !*end && read<FName>(faction.data, 0) == hostileFaction, "hostile guard faction unavailable");
 }
+void rememberCounts(const EncounterKey& key, void* row, void* activeEntry) {
+    auto area=findArea(key); require(area && area->object.valid(),"group size owner missing");
+    auto& counts=area->counts.at(key.row);
+    const std::array<uint32_t,3> current{read<uint32_t>(phaseQuantity(row),0),read<uint32_t>(activeEntry,0x68),read<uint32_t>(activeEntry,0x6c)};
+    require(current[1]<=128 && current[2]<=128 && current[0]>=current[1] && current[0]<=std::max(current[1],current[2]),
+        "generated phase count disagrees with active entry range");
+    if(!counts.known) {counts.known=true;counts.original=counts.owned=current;}
+    else require(current==counts.owned,"group quantities changed externally");
+}
+CountEdit countEdit(void* row,const EncounterDecision& decision,bool requireCapacity=true) {
+    auto handle=findArea(decision.key);
+    if(!handle || !handle->object.valid()) {
+        require(!decision.groupCount,"saved enemy count owner unavailable"); return {};
+    }
+    auto& counts=handle->counts.at(decision.key.row);
+    if(!counts.known) { require(!decision.groupCount,"group size baseline unavailable"); return {}; }
+    if(requireCapacity && decision.groupCount) require(counts.capacityReady,"group point capacity not prepared");
+    auto area=handle->object.object;
+    auto table=read<UDataTable*>(area,0x370); require(table && table->GetRowStruct()==rowType,"group count table");
+    auto entries=read<Array>(area,0x360);require(arrayValid(entries,64),"group count active entries");
+    unsigned ordinal=0;bool found=false;
+    for(auto& pair:table->GetRowMap()) {
+        if(pair.Value==row && identify(decision.key.area,pair.Key)==std::optional{decision.key}){found=true;break;}
+        ++ordinal;
+    }
+    require(found && ordinal<static_cast<unsigned>(entries.count),"group count row mapping");
+    auto activeEntry=entries.data+ordinal*0x100;
+    auto target=counts.original;
+    if(decision.groupCount) target.fill(decision.groupCount);
+    // Legacy enemy cycles retain the generated/base quantity until completion.
+    CountEdit edit(phaseQuantity(row),activeEntry+0x68,activeEntry+0x6c,target);
+    require(edit.before==counts.owned,"group quantities changed externally");
+    return edit;
+}
+void acceptCounts(const EncounterDecision& decision) {
+    auto handle=findArea(decision.key);if(!handle || !handle->object.valid())return;
+    auto& counts=handle->counts.at(decision.key.row);
+    counts.owned=counts.original;if(decision.groupCount)counts.owned.fill(decision.groupCount);
+}
 void setDefinition(void* row, const EncounterDecision& decision, UObject* owner) {
     auto destination = static_cast<unsigned char*>(row) + 0x30;
     auto reactions = static_cast<unsigned char*>(row) + 0x60;
     auto faction = static_cast<unsigned char*>(row) + 0x68;
+    auto counts = countEdit(row,decision);
     const auto current = definitionKey(destination);
     require((current == wildlifeKeys[decision.key.definition] || std::find(enemyKeys.begin(), enemyKeys.end(), current) != enemyKeys.end())
         && ownedProfile(row), "encounter profile changed externally");
@@ -273,7 +320,11 @@ void setDefinition(void* row, const EncounterDecision& decision, UObject* owner)
         auto existing = read<UClass*>(reactions, 0);
         if (usesHostileHumanProfile(decision.outcome)
             ? existing && existing->GetPathName() == hostileReactions && read<FName>(faction, 0) == hostileFaction
-            : !existing && read<uint64_t>(faction, 0) == 0) return;
+            : !existing && read<uint64_t>(faction, 0) == 0) {
+                counts.apply();
+                if(!counts.readbackMatches()) {counts.restore();require(counts.restored(),"group count rollback");require(false,"group count readback");}
+                acceptCounts(decision); return;
+            }
     }
     Value replacement(definitionProperty), backup(definitionProperty), nextReactions(reactionsProperty), nextFaction(factionProperty),
         previousReactions(reactionsProperty), previousFaction(factionProperty);
@@ -284,19 +335,22 @@ void setDefinition(void* row, const EncounterDecision& decision, UObject* owner)
     reactionsProperty->CopyCompleteValue(previousReactions.data, reactions);
     factionProperty->CopyCompleteValue(previousFaction.data, faction);
     try {
+        counts.apply();
         definitionProperty->CopyCompleteValue(destination, replacement.data);
         reactionsProperty->CopyCompleteValue(reactions, nextReactions.data);
         factionProperty->CopyCompleteValue(faction, nextFaction.data);
-        require(definitionKey(destination) == keyFor(decision) && reactionsProperty->Identical(reactions, nextReactions.data)
+        require(counts.readbackMatches() && definitionKey(destination) == keyFor(decision) && reactionsProperty->Identical(reactions, nextReactions.data)
             && factionProperty->Identical(faction, nextFaction.data), "enemy profile readback failed");
     } catch (...) {
+        counts.restore();
         definitionProperty->CopyCompleteValue(destination, backup.data);
         reactionsProperty->CopyCompleteValue(reactions, previousReactions.data);
         factionProperty->CopyCompleteValue(faction, previousFaction.data);
-        require(definitionKey(destination) == definitionKey(backup.data) && reactionsProperty->Identical(reactions, previousReactions.data)
+        require(counts.restored() && definitionKey(destination) == definitionKey(backup.data) && reactionsProperty->Identical(reactions, previousReactions.data)
             && factionProperty->Identical(faction, previousFaction.data), "enemy profile rollback failed");
         throw;
     }
+    acceptCounts(decision);
 }
 void prepareRoamingPoints(const EncounterDecision& decision) {
     if (decision.outcome == Outcome::Original || decision.outcome == Outcome::None) return;

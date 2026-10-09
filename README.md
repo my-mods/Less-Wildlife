@@ -19,17 +19,27 @@ Replacement chances default to 0%. Enemy choices default to On and No spawn defa
 - Vortex: Install Less-Wildlife.zip through Vortex, enable it and deploy.
 - Manual: Copy the archive's Data/LessWildlife folder into The Blood of Dawnwalker/Dawnwalker/Binaries/Win64/ue4ss/Mods, preserving the folder structure.
 
-## Population settings
+## Wildlife group size
 
-Use Mod Settings > Less Wildlife > Population and Apply. Population ranges from 10% to 200% in 1% steps; 100% is normal and the default. Adjust boars and Adjust wolves independently switch population scaling On or Off, both defaulting to On. Off restores that species' original values still controlled by this mod; it does not remove the animals. Changes take effect as areas are encountered again. Already spawned animals are unaffected. Setting 100% restores the original values for entries still controlled by this mod; changes made by the game or another mod are preserved.
+Use Mod Settings > Less Wildlife > Wildlife > Base wildlife group size and Apply. This controls members within groups that remain wildlife, independently of replacement enemy counts. It ranges from 10% to 200% in 1% steps; 100% is normal and the default. Adjust boars and Adjust wolves independently switch population scaling On or Off, both defaulting to On. Off restores that species' original values still controlled by this mod; it does not remove the animals. Changes take effect as areas are encountered again. Already spawned animals are unaffected. Setting 100% restores the original values for entries still controlled by this mod; changes made by the game or another mod are preserved.
 
 Without the menu, close the game and set `populationPercent = 100` to your chosen integer from 10 to 200 under `[LessWildlife]` in the mod's `settings.ini`. Set `reduceBoars = 0` or `reduceWolves = 0` to turn off scaling for that species, or `1` to turn it on. Missing settings are added on startup. Existing valid preferences, comments and unrelated sections are retained; repeated known settings are consolidated using the last valid value. Older percentages from 1 to 9 become 10 so the menu can open them. The file is created on first launch and is not bundled in the archive.
+
+## Enemy group sizes
+
+Under Enemy group sizes, choose minimum and maximum members for each enemy type. Both limits accept integers from 1 to 10 and apply equally to boar and wolf replacements. Every count between the limits has the same chance. Set both limits to 1 for a single enemy, or both to any other count for a fixed group size. Reversed limits are interpreted in ascending order.
+
+Defaults: Bandits 3–6, Regular guards 2–4, Blood guards 2–4, Vidmo 1–2 and Kobolds 4–10. These ranges override Base wildlife group size. No spawn remains a separate outcome.
+
+The chosen count is saved with the group's enemy type. Travel, reloads, partial kills and changing settings do not reroll or refill an existing group. New groups and later natural respawn cycles use the current ranges. Groups already saved by an earlier version retain their previous sizing for the current cycle. The game still controls encounter locations, navigation and respawn timing.
+
+For manual configuration, use the paired keys `banditGroupMin`/`banditGroupMax`, `guardGroupMin`/`guardGroupMax`, `bloodGuardGroupMin`/`bloodGuardGroupMax`, `vidmoGroupMin`/`vidmoGroupMax` and `koboldGroupMin`/`koboldGroupMax`. Close the game before editing settings.ini. Integer limits outside 1–10 are clamped; missing or non-integer limits use defaults.
 
 ## Boar and wolf replacement
 
 Open Mod Settings > Less Wildlife. Under Boars or Wolves, set Replacement chance and toggle the allowed outcomes, then Apply. Regular guards are standard longsword soldiers made hostile toward the player. Each enemy toggle adds that type to the species' random pool. All enabled outcomes have equal weight. For example, 60% with Bandits and Kobolds enabled leaves about 40% of groups as animals, 30% as bandits and 30% as kobolds. A single enabled outcome receives every successful replacement roll. An empty pool leaves the animals.
 
-The chosen result belongs to the whole group and is stored with that game save. Travel, repeated overlap and loading the save reuse it. Settings changes apply to newly encountered groups and subsequent natural respawn cycles. Partial kills do not reroll the survivors. Group size retains the existing Population setting.
+The chosen result belongs to the whole group and is stored with that game save. Travel, repeated overlap and loading the save reuse it. Settings changes apply to newly encountered groups and subsequent natural respawn cycles. Partial kills do not reroll the survivors. Replacement groups use their enemy-specific size range, independently of Base wildlife group size.
 
 No spawn makes the selected encounter empty for its current cycle while retaining the game's respawn schedule. It does not permanently remove the group. A later natural cycle rolls again using the current settings.
 
@@ -41,11 +51,9 @@ These encounters follow the game's next-day respawn schedule. Defeat every membe
 
 ## Logging
 
-Logging defaults to Off. Use Mod Settings > Less Wildlife > Logging and Apply to change it while playing. Without the menu, close the game and set `debugLogging = 1` under `[LessWildlife]` in the mod's `settings.ini`. The file is created on the first launch and is not bundled in the archive.
+Logging is the final menu setting: Off, Error, Warning (default), Info or Debug. Levels include all more severe messages. Use Debug to record detailed encounter, size, equipment and timing information in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Off silences this mod. Without the menu, close the game and set `logLevel` to 0–4 in settings.ini.
 
-Details appear in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Population summaries include counts, deferred areas, failures and callback timings. Replacement messages report saved decisions, appearance resets, suppression, exclusions and failed validation. Respawn messages distinguish next-day scheduling, visibility delays, dead-member cleanup and refill attempts. A successful attempt message alone does not confirm that actors appeared.
-
-Examples and repeated messages are limited, with aggregate reports at most once per ten seconds of activity. Logging below Debug skips optional diagnostics and timing. Save and encounter processing remains active. If any required native function, layout or hook cannot be validated, replacement is unavailable while the Lua population controls remain available. Missing-object and missing-function errors identify the required binding. Turn Logging below Debug after troubleshooting.
+Diagnostics are bounded and aggregated. Levels below Debug skip optional timings and detailed instrumentation; saved encounter processing remains active. Successful offline checks or spawn attempts alone do not prove gameplay behavior or a frame-rate improvement.
 
 ## Credits
 
@@ -64,10 +72,6 @@ and `UPSTREAM.json`. The root must contain `Data`, `mod.manifest` and
 
 Repeated encounter-name checks reuse a bounded cache of parsed names. Groups that stay as wildlife or choose No spawn skip unused replacement-profile preparation. Existing area handles are reused. Saved choices, quest exclusions, spawn probabilities and respawn rules retain their normal behavior.
 
-Logging includes aggregate elapsed times for table building, appearance initialization, activity binding, encounter queueing, eligibility, attempts and clock updates. These hook measurements include the original game call and may be nested; they are not isolated mod overhead or frame times. Logging below Debug skips this optional instrumentation. Saved encounter choices, quest exclusions and spawn probabilities are unchanged.
+Logging includes aggregate elapsed times for table building, appearance initialization, activity binding, encounter queueing, eligibility, attempts, clock updates and point generation. These hook measurements include the original game call and may be nested; they are not isolated mod overhead or frame times. Logging below Debug skips this optional instrumentation. Saved encounter choices, quest exclusions and spawn probabilities are unchanged.
 
-Enable the final **Logging** setting for diagnostics in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Leave it Off for normal play. Timings and offline checks do not establish an in-game frame-rate improvement.
-
-### Logging
-
-Logging is the final diagnostic setting: **Off**, **Error**, **Warning** (default), **Info**, or **Debug**. Levels include all more severe messages. Off silences this mod; Debug includes detailed events and timing summaries in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Old Logging Debug preferences become Debug; old Off preferences become Warning.
+Choose **Debug** in the final Logging setting when collecting detailed diagnostics in `Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log`. Warning is the default for normal play. Timings and offline checks do not establish an in-game frame-rate improvement.
