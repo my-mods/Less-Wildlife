@@ -1,1 +1,1 @@
-Adjust ordinary boar and wolf populations, or replace eligible groups with Bandits, Blood guards, Regular guards, Vidmo, Kobolds or no spawn. Configure each species independently in Mod Setting Menu.
+Adjust the size of ordinary boar herds and wolf packs, or replace them with enemies. Choose a shared enemy pool and individual 1–10 group-size ranges, with separate replacement chances for boars and wolves.

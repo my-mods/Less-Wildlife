@@ -73,10 +73,10 @@
         "VortexExtension"
       ],
       "pending": {
-        "impact": "minor",
-        "rationale": "Saved per-enemy ranges, conditional species modes and shared enemy pool; menu display name now matches Wilder Wildlife - Customize Enemy Spawns. Legacy preferences and encounter cycles retained.",
-        "majorOverride": false,
-        "reviewedInputs": "1fd8e36e7a06d206bb852569b9227a63bd40c4af539050737f68a9f8b9c8c373",
+        "impact": "major",
+        "rationale": "User explicitly requests version1.0 for saved enemy-size ranges, conditional species modes, shared enemy pool and final menu title; player-facing release materials prepared.",
+        "majorOverride": true,
+        "reviewedInputs": "75294e260d15c1160e7d7fa6e5d402302a382c551190999cab7d5ecda67e04ae",
         "divergenceReviewed": false
       }
     }

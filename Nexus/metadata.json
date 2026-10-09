@@ -6,7 +6,7 @@
   "author": "oOCamilleOo",
   "uploader": "oOCamilleOo",
   "language": "English",
-  "version": "0.2.0-dev",
+  "version": "1.0.0",
   "tags": [
     "Gameplay",
     "Quality of Life",
@@ -21,7 +21,7 @@
   "file": {
     "name": "Wilder Wildlife",
     "archive": "Less-Wildlife.zip",
-    "version": "0.2.0-dev",
+    "version": "1.0.0",
     "category": "main",
     "allowModManagerDownload": true,
     "primaryModManagerDownload": true,
@@ -46,5 +46,5 @@
   ],
   "donationPoints": false,
   "permissionsFile": "permissions.txt",
-  "summary": "Adjust ordinary boar and wolf populations, or replace eligible groups with Bandits, Blood guards, Regular guards, Vidmo, Kobolds or no spawn. Configure each species independently in Mod Setting Menu."
+  "summary": "Adjust the size of ordinary boar herds and wolf packs, or replace them with enemies. Choose a shared enemy pool and individual 1–10 group-size ranges, with separate replacement chances for boars and wolves."
 }
