@@ -73,10 +73,10 @@
         "VortexExtension"
       ],
       "pending": {
-        "impact": "none",
-        "rationale": "Matches the verified Nexus release.",
+        "impact": "patch",
+        "rationale": "Patch over verified Nexus 1.0.0: contain invalid native reads, validate deletion-aware callback identities and activity-point membership, guard temporary quantity restoration against replaced storage, and disable replacement after unverifiable rollback; preserve settings, saved choices and native ABI.",
         "majorOverride": false,
-        "reviewedInputs": "ecf08e36fa1b8ee24bc2d3926a42c7410c0bdd9771d5e7f1b2ee16e1ed257b16",
+        "reviewedInputs": "77d822eff4bf44af030160a45ad1b39af6cde358b15459a12de6fec68a27bb58",
         "divergenceReviewed": false
       },
       "publication": {

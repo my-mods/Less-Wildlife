@@ -107,3 +107,20 @@ processing stays active. Logging Debug retains the bounded 128-key observation c
 one eligibility sample per group per second, and at most 256 samples or soft 2 ms
 of capture per second. Details are capped at 12 per ten seconds with aggregated
 counts/timings. These are work bounds, not measured frame-time results.
+
+## Defensive object access
+
+Callback-local UObject identities receive deletion notifications, including objects
+without an allocated weak serial. Builder work checks its owner again after the
+original callback. Activity-point repair rechecks identity, group membership and
+parameter storage before and after each engine setter, and attempts every pending
+rollback before disabling replacement if restoration cannot be verified. Temporary
+point counts are restored only while the original area, table, row, active-entry
+and phase storage still match; rejected targets are never written again.
+
+The raw-value reader contains access/in-page read faults in a small leaf copy and
+rejects pointer arithmetic overflow. UObject header reads are similarly contained.
+Engine callbacks, property operations and memory writes are not enclosed in SEH.
+These checks do not pin objects, validate every allocation, repair existing game
+corruption or establish the cause of a crash. All work remains synchronous; no
+extra polling, weak serial allocation, settings or save-format changes are added.

@@ -29,7 +29,7 @@ void rememberArea(UObject* area) {
         std::lock_guard guard(areaMutex);
         if (auto found = areaByGuid.find(guid); found != areaByGuid.end()) {
             const auto& existing = areaSlots[found->second]->object;
-            if (existing.alive && existing.object == area) return;
+            if (existing.valid() && existing.object == area) return;
         }
     }
     auto item = std::make_shared<AreaHandle>(); item->object.bind(area);
@@ -38,7 +38,7 @@ void rememberArea(UObject* area) {
     size_t slot = areaSlots.size();
     if (auto found = areaByGuid.find(item->guid); found != areaByGuid.end()) {
         slot = found->second;
-        if (areaSlots[slot]->object.alive && areaSlots[slot]->object.object == area) return;
+        if (areaSlots[slot]->object.valid() && areaSlots[slot]->object.object == area) return;
     } else if (slot == 4096) {
         for (unsigned i = 0; i < 8; ++i) {
             auto candidate = pruneArea++ % areaSlots.size();
@@ -372,32 +372,53 @@ void prepareRoamingPoints(const EncounterDecision& decision) {
     const uint32_t group = read<uint32_t>(area, 0x414) * 1000u + ordinal + 1;
     auto points = read<Array>(area, 0x398); require(arrayValid(points, 4096), "dynamic activity point limit");
     auto property = montageProperty->GetInner(); Value empty(property);
-    struct Point { UObject* object; std::unique_ptr<Value> backup; };
+    struct Point { std::unique_ptr<ScopedObjectRef> object; std::unique_ptr<Value> backup; int ordinal; };
+    auto parametersFor = [&](const ScopedObjectRef& point, int index) {
+        require(active && handle->object.valid() && point.valid(), "roaming point owner expired");
+        const auto current = read<Array>(area, 0x398);
+        require(arrayValid(current,4096) && index>=0 && index<current.count
+            && read<UObject*>(current.data,size_t(index)*8)==point.object, "roaming point membership changed");
+        require(read<uint32_t>(point.object, 0x438) == group, "roaming point group changed");
+        auto parameters = read<unsigned char*>(point.object, 0x410);
+        require(parameters && read<uint64_t>(parameters, 0x280) == read<uint64_t>(engine<void*>(0xa06c7f8), 0), "dynamic activity parameter type");
+        // These stock points use whole assets, never subobjects. Check the
+        // entire soft-reference header before passing it to engine copying.
+        const auto value = read<std::array<unsigned char,40>>(parameters, 0x288);
+        require(read<int32_t>(value.data(), 32) == 0,
+                "dynamic activity montage subobject storage");
+        return parameters;
+    };
     std::vector<Point> changes;
     for (int i = 0; i < points.count; ++i) {
         auto point = read<UObject*>(points.data, i * 8);
-        require(point && point->IsA(static_cast<UClass*>(types[18].object)), "dynamic activity point class");
+        auto identity = std::make_unique<ScopedObjectRef>(point);
+        require(point->IsA(static_cast<UClass*>(types[18].object)), "dynamic activity point class");
         if (read<uint32_t>(point, 0x438) != group) continue;
-        auto parameters = read<unsigned char*>(point, 0x410);
-        require(parameters && read<uint64_t>(parameters, 0x280) == read<uint64_t>(engine<void*>(0xa06c7f8), 0), "dynamic activity parameter type");
+        auto parameters = parametersFor(*identity, i);
         if (property->Identical(parameters + 0x288, empty.data)) continue;
         auto backup = std::make_unique<Value>(property);
         property->CopyCompleteValue(backup->data, parameters + 0x288);
-        changes.push_back({point, std::move(backup)});
+        changes.push_back({std::move(identity), std::move(backup), i});
     }
     size_t changed{};
     try {
         for (auto& item : changes) {
+            parametersFor(*item.object, item.ordinal);
             ++changed;
-            engine<void(*)(UObject*, void*, const void*)>(0x1e95b04)(item.object, nullptr, empty.data);
-            require(property->Identical(read<unsigned char*>(item.object, 0x410) + 0x288, empty.data), "roaming point readback failed");
+            engine<void(*)(UObject*, void*, const void*)>(0x1e95b04)(item.object->object, nullptr, empty.data);
+            require(property->Identical(parametersFor(*item.object, item.ordinal) + 0x288, empty.data), "roaming point readback failed");
         }
     } catch (...) {
+        bool restored = true;
         while (changed) {
             auto& item = changes[--changed];
-            engine<void(*)(UObject*, void*, const void*)>(0x1e95b04)(item.object, nullptr, item.backup->data);
-            require(property->Identical(read<unsigned char*>(item.object, 0x410) + 0x288, item.backup->data), "roaming point rollback failed");
+            try {
+                parametersFor(*item.object, item.ordinal);
+                engine<void(*)(UObject*, void*, const void*)>(0x1e95b04)(item.object->object, nullptr, item.backup->data);
+                require(property->Identical(parametersFor(*item.object, item.ordinal) + 0x288, item.backup->data), "roaming point rollback failed");
+            } catch (...) { restored = false; }
         }
+        if (!restored) { failed = true; warning(L"Replacement disabled after roaming point ownership or rollback failed."); }
         throw;
     }
 }
@@ -411,7 +432,8 @@ Members members(void* entry, UObject* sought = nullptr) {
     Members result{static_cast<unsigned>(count)};
     for (int i = 0; i < count; ++i) {
         auto stub = read<UObject*>(data, i * 8);
-        require(stub && stub->IsA(stubType), "encounter member class");
+        TypeRef identity; identity.bind(stub);
+        require(stub->IsA(stubType), "encounter member class");
         if (!(read<uint8_t>(stub, 0x58) & 0x10)) ++result.living;
         if (stub == sought) result.contains = true;
     }

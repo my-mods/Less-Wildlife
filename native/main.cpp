@@ -20,6 +20,7 @@
 #include "RespawnContract.hpp"
 #include "LifecycleContract.hpp"
 #include <MinHook.h>
+#include "MemoryAccess.hpp"
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -86,7 +87,10 @@ void skip(UObject* area, SkipReason reason) {
     message(L"Wildlife encounter retained: " + area->GetFullName() + L"; reason=" + labels[static_cast<size_t>(reason)]);
 }
 template<class T> T read(const void* data, size_t offset) {
-    T value; std::memcpy(&value, static_cast<const unsigned char*>(data) + offset, sizeof(T)); return value;
+    T value{};
+    const auto source = MemoryAccess::offset(data, offset, sizeof(T));
+    require(source && MemoryAccess::copy(&value, source, sizeof(T)), "unreadable encounter memory");
+    return value;
 }
 struct Array { unsigned char* data; int32_t count, capacity; };
 static_assert(sizeof(Array) == 16 && sizeof(FName) == 8);
@@ -96,10 +100,17 @@ bool arrayValid(const Array& a, int maximum) {
 }
 
 struct TypeRef {
+    // Only header reads are contained; engine methods/writes are not masked.
+    __declspec(noinline) static bool objectIndex(UObject* object, int& index) noexcept {
+        __try { index = object->GetInternalIndex(); return true; }
+        __except(MemoryAccess::readFault(GetExceptionInformation())) { return false; }
+    }
     UObject* object{}; std::atomic_int index{-1}; int serial{}; std::atomic_bool alive{false};
     void bind(UObject* value) {
         require(value != nullptr, "population type missing");
-        index = value->GetInternalIndex(); auto slot = FUObjectArray::IndexToObject(index);
+        int candidate = -1;
+        require(objectIndex(value, candidate) && candidate >= 0, "population object header invalid");
+        index = candidate; auto slot = FUObjectArray::IndexToObject(index);
         require(slot && slot->GetUObject() == value && FUObjectArray::IsValid(slot, false), "population type invalid");
         object = value; serial = slot->GetSerialNumber(); alive = true;
     }
@@ -110,18 +121,47 @@ struct TypeRef {
             && (!serial || serial == slot->GetSerialNumber());
     }
 };
+// Stack-bound identities also receive deletion notifications, including objects
+// whose engine serial is still zero. No serial allocation or strong GC roots.
+struct ScopedObjectRef : TypeRef {
+    inline static std::mutex mutex;
+    inline static ScopedObjectRef* first{};
+    ScopedObjectRef* previous{}; ScopedObjectRef* next{};
+    explicit ScopedObjectRef(UObject* value) {
+        bind(value);
+        std::lock_guard lock(mutex);
+        next = first; if (next) next->previous = this; first = this;
+    }
+    ~ScopedObjectRef() {
+        std::lock_guard lock(mutex);
+        if (previous) previous->next = next; else first = next;
+        if (next) next->previous = previous;
+    }
+    static void invalidate(int32_t deleted) {
+        std::lock_guard lock(mutex);
+        for (auto ref = first; ref; ref = ref->next) if (ref->index == deleted) ref->alive = false;
+    }
+    static void invalidateAll() {
+        std::lock_guard lock(mutex);
+        for (auto ref = first; ref; ref = ref->next) ref->alive = false;
+    }
+};
 std::array<TypeRef, 21> types;
 namespace EncounterRuntime { void invalidateArea(int32_t); }
 TypeRef observerType;
 std::atomic_bool listening{};
 struct Listener final : FUObjectDeleteListener {
     void NotifyUObjectDeleted(const UObjectBase*, int32_t index) override {
+        ScopedObjectRef::invalidate(index);
         for (auto& type : types) if (type.index == index) { type.alive = false; active = false; }
         if (observerType.index == index) observerType.alive = false;
         EncounterRuntime::invalidateArea(index);
     }
     void OnUObjectArrayShutdown() override {
         active = false;
+        ScopedObjectRef::invalidateAll();
+        for (auto& type : types) type.alive = false;
+        observerType.alive = false;
         if (listening.exchange(false)) FUObjectArray::RemoveUObjectDeleteListener(this);
     }
 } listener;
@@ -481,9 +521,14 @@ void builder(UObject* area) {
     // Always run the game's builder exactly once. It also handles its cached
     // table. Cached rows reuse saved decisions and never trigger another roll.
     const bool participate = active && configurationReady && !failed && GetCurrentThreadId() == gameThread;
-    auto prior = participate && area ? read<UObject*>(area, 0x370) : nullptr;
+    std::unique_ptr<ScopedObjectRef> owner;
+    UObject* prior{};
+    if (participate && area) try {
+        owner = std::make_unique<ScopedObjectRef>(area);
+        prior = read<UObject*>(area, 0x370);
+    } catch (const std::exception&) { warning(L"Population builder object unavailable; normal game processing retained."); }
     original(area);
-    if (!participate) return;
+    if (!participate || !owner || !owner->valid() || !active || failed) return;
     if (prior && logging) ++stats.cached;
     auto started = std::chrono::steady_clock::now();
     if (logging) ++stats.builders;
@@ -491,6 +536,7 @@ void builder(UObject* area) {
         require(types[3].valid() && types[4].valid(), "frame counter expired");
         int64_t frame = -1; clockOwner->ProcessEvent(clockFunction, &frame);
         require(frame >= 0, "invalid frame counter");
+        require(owner->valid() && active, "population builder object expired");
         if (frame != workFrame) { workFrame = frame; workEntries = 0; workMicros = 0; }
         auto count = read<Array>(area, 0x340).count;
         // Retain only indexed identity here, even if the table work must wait.
@@ -532,8 +578,12 @@ void initializeAppearance(UObject* definition, UObject* stub) {
     bool repaired = false, measured = false;
     auto started = std::chrono::steady_clock::time_point{};
     try {
-        if (active && GetCurrentThreadId() == gameThread && definition && stub
-            && types[6].valid() && types[7].valid()
+        std::unique_ptr<ScopedObjectRef> definitionOwner, stubOwner;
+        if (active && configurationReady && !failed && GetCurrentThreadId() == gameThread && definition && stub && types[6].valid() && types[7].valid()) {
+            definitionOwner = std::make_unique<ScopedObjectRef>(definition);
+            stubOwner = std::make_unique<ScopedObjectRef>(stub);
+        }
+        if (definitionOwner && stubOwner
             && definition->IsA(humanoidType) && stub->IsA(stubType)
             && EncounterRuntime::enemyDefinition(definition)
             && randomAppearanceProperty->GetPropertyValue(reinterpret_cast<unsigned char*>(definition) + 0x4f8)) {
@@ -551,6 +601,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
                         message(L"Replacement equipment retained normal initialization: " + std::wstring(reason.begin(), reason.end()),2);
                     }
                 }
+                require(active && definitionOwner->valid() && stubOwner->valid(), "replacement initializer object expired");
                 auto record = read<void*>(stub, 0x38);
                 auto scope = EncounterRuntime::attemptScope;
                 if (record && scope && scope->decision && scope->newCycle && read<void*>(stub, 0xe8) == scope->entry) {
@@ -635,7 +686,7 @@ void stop() {
 using namespace RC;
 class LessWildlifeMod final : public CppUserModBase {
 public:
-    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"1.0.0"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
+    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"1.0.1-dev"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
         lua.register_function("_LWConfigureReplacementSizesV3", [](const auto& l) {

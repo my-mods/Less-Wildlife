@@ -1,0 +1,1 @@
+- Improved stability when wildlife replacement encounters are rebuilt or unloaded.

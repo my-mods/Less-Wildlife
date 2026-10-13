@@ -7,12 +7,48 @@ void generate(UObject* area,int32_t ordinal,void* context,void* row) {
     CountEdit capacity;
     std::shared_ptr<EncounterRuntime::AreaHandle> handle;
     unsigned sourceIndex=64;
+    std::unique_ptr<ScopedObjectRef> tableOwner;
+    Array borrowedEntries{}, borrowedPhases{};
+    FName borrowedName;
+    bool pendingRestore{};
+    auto restore = [&]() noexcept {
+        if (!pendingRestore) return true;
+        pendingRestore = false; // Never retry a write through rejected storage.
+        try {
+            require(handle && handle->object.valid() && tableOwner && tableOwner->valid(), "point capacity owner expired");
+            require(read<UObject*>(area,0x370)==tableOwner->object, "point capacity table replaced");
+            const auto entries=read<Array>(area,0x360);
+            require(entries.data==borrowedEntries.data && entries.count==borrowedEntries.count && entries.capacity==borrowedEntries.capacity,
+                    "point capacity entry storage replaced");
+            auto table=static_cast<UDataTable*>(tableOwner->object);
+            auto& rows=table->GetRowMap();
+            require(rows.Num()>=0 && rows.Num()<=64 && rows.GetMaxIndex()<=64,"point capacity row bounds");
+            bool found=false;
+            for (auto& pair:rows) if(pair.Key==borrowedName && pair.Value==row){found=true;break;}
+            require(found,"point capacity row replaced");
+            const auto phases=read<Array>(row,0xd8);
+            require(phases.data==borrowedPhases.data && phases.count==borrowedPhases.count && phases.capacity==borrowedPhases.capacity,
+                    "point capacity phase storage replaced");
+            require(capacity.readbackMatches(),"point capacity quantities changed during generation");
+            capacity.restore();
+            require(capacity.restored(),"point capacity rollback failed");
+            return true;
+        } catch (...) {
+            failed=true;
+            if(handle && sourceIndex<64)handle->counts[sourceIndex].capacityReady=false;
+            try { warning(L"Replacement disabled: point capacity ownership or restoration failed."); } catch (...) {}
+            return false;
+        }
+    };
     try {
-        if(active && configurationReady && !failed && GetCurrentThreadId()==gameThread && area && area->IsA(areaType)) {
+        if(active && configurationReady && !failed && GetCurrentThreadId()==gameThread && area) {
+            ScopedObjectRef areaOwner(area);
+            require(area->IsA(areaType),"point capacity area class");
             auto entries=read<Array>(area,0x360);
             require(arrayValid(entries,64) && ordinal>=0 && ordinal<entries.count,"point capacity entry mapping");
             auto table=read<UDataTable*>(area,0x370);
-            require(table && table->GetRowStruct()==rowType,"point capacity table");
+            tableOwner=std::make_unique<ScopedObjectRef>(table);
+            require(table->GetRowStruct()==rowType,"point capacity table");
             unsigned position=0;
             for(auto& pair:table->GetRowMap()) {
                 if(position++!=static_cast<unsigned>(ordinal))continue;
@@ -35,18 +71,20 @@ void generate(UObject* area,int32_t ordinal,void* context,void* row) {
                 require(uint64_t(spawns.count)+n<=4096 && uint64_t(actions.count)+actionCount<=4096,"group point capacity budget");
                 capacity=CountEdit(phaseQuantity(row),entry+0x68,entry+0x6c,{n,n,n});
                 require(capacity.before==counts.owned,"point capacity quantities changed externally");
-                sourceIndex=key->row;capacity.apply();require(capacity.readbackMatches(),"point capacity write");
+                borrowedEntries=entries;borrowedPhases=read<Array>(row,0xd8);borrowedName=pair.Key;
+                sourceIndex=key->row;pendingRestore=true;
+                capacity.apply();require(capacity.readbackMatches(),"point capacity write");
                 break;
             }
         }
     } catch(const std::exception& error) {
-        capacity.restore();capacity={};handle.reset();
+        restore();capacity={};handle.reset();
         if(logLevel>=2 && warningCount.fetch_add(1)<8){std::string s(error.what());message(L"Group point capacity unavailable: "+std::wstring(s.begin(),s.end()),2);}
     }
-    struct Restore {CountEdit& value;~Restore(){value.restore();}} restore{capacity};
+    struct Restore {decltype(restore)& finish;~Restore() noexcept {finish();}} cleanup{restore};
     original(area,ordinal,context,row);
-    capacity.restore();
-    if(handle && sourceIndex<64 && handle->object.valid())handle->counts[sourceIndex].capacityReady=true;
+    const bool restored=restore();
+    if(restored && !failed && handle && sourceIndex<64 && handle->object.valid())handle->counts[sourceIndex].capacityReady=true;
 }
 void stop(){if(target){MH_DisableHook(target);MH_RemoveHook(target);target=nullptr;}}
 void start(){
