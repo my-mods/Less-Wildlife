@@ -101,13 +101,14 @@
         "github": {
           "destination": "github",
           "verified": true,
-          "verifiedAt": "2026-10-09T17:55:15.502Z",
-          "version": "1.0.0",
-          "sourceCommit": "657587c4ffed7833ee9649bb927e897aed8a57d7",
-          "tag": "v1.0.0",
-          "archiveSha256": "1ff9e51c7bf5cb78b9f0878ebbcc9d4e8e5bc9d6cec5f2ba42b29fa1778e48df",
-          "url": "https://github.com/my-mods/Less-Wildlife/releases/tag/v1.0.0",
-          "prerelease": false
+          "verifiedAt": "2026-10-20T08:46:26.158776+00:00",
+          "version": "1.0.1",
+          "sourceCommit": "de7efc78d716ebb421a0055badade8408e35b054",
+          "tag": "v1.0.1",
+          "archiveSha256": "46b6618b069fac4d5d1505dbe7f42d4e4b049f89c5defc199dda3a0636387dc9",
+          "url": "https://github.com/my-mods/Less-Wildlife/releases/tag/v1.0.1",
+          "releaseId": 418176590,
+          "prerelease": true
         }
       }
     }
