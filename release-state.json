@@ -74,9 +74,9 @@
       ],
       "pending": {
         "impact": "patch",
-        "rationale": "Release 1.0.1: stability improvements and inherited appearance/animal idle corrections",
+        "rationale": "Release 1.0.1: stability and appearance/animation fixes with user-approved concise changelog",
         "majorOverride": false,
-        "reviewedInputs": "a1e2e676b876bd823b3560e9676d8e1e45f7b9e806e9917734d4d3f1ff81a3f2",
+        "reviewedInputs": "f80c2e2fb0be1dd7a068db13d61bb557035656eb080884088bfd3c4c2f79accc",
         "divergenceReviewed": false
       },
       "publication": {
