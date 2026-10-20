@@ -124,3 +124,17 @@ Engine callbacks, property operations and memory writes are not enclosed in SEH.
 These checks do not pin objects, validate every allocation, repair existing game
 corruption or establish the cause of a crash. All work remains synchronous; no
 extra polling, weak serial allocation, settings or save-format changes are added.
+
+## Replacement appearance restoration
+
+Fixed and randomized humanoid definitions share saved appearance fields.
+An independent per-member appearance journal clears inherited appearance data
+once per encounter cycle before normal initialization. Existing replacement
+members receive this correction on their next actor reconstruction; subsequent
+loads retain their chosen appearance. The group and equipment records retain
+their existing encodings and namespaces. Quest-gated encounters, corpses and
+live actors are excluded.
+
+Restored nonempty groups also sanitize their owned generated activity points.
+Appearance initialization covers streaming restoration outside an encounter
+attempt. Neither path scans or changes existing actors.

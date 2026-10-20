@@ -572,6 +572,7 @@ void builder(UObject* area) {
     }
 }
 
+#include "AppearanceRepair.inl"
 struct AppearanceStats { uint64_t checked{}, repaired{}, equipment{}, failures{}, micros{}, maximum{}, reported{}; } appearanceStats;
 void initializeAppearance(UObject* definition, UObject* stub) {
     HookTimer timing(1);
@@ -585,8 +586,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
         }
         if (definitionOwner && stubOwner
             && definition->IsA(humanoidType) && stub->IsA(stubType)
-            && EncounterRuntime::enemyDefinition(definition)
-            && randomAppearanceProperty->GetPropertyValue(reinterpret_cast<unsigned char*>(definition) + 0x4f8)) {
+            && EncounterRuntime::enemyDefinition(definition)) {
             const auto name = stub->GetFName();
             const auto row = FName(name.GetComparisonIndex().ToUnstableInt(), 0).ToString();
             if (wildlifeRow(row)) {
@@ -602,12 +602,7 @@ void initializeAppearance(UObject* definition, UObject* stub) {
                     }
                 }
                 require(active && definitionOwner->valid() && stubOwner->valid(), "replacement initializer object expired");
-                auto record = read<void*>(stub, 0x38);
-                auto scope = EncounterRuntime::attemptScope;
-                if (record && scope && scope->decision && scope->newCycle && read<void*>(stub, 0xe8) == scope->entry) {
-                    std::memset(static_cast<unsigned char*>(record) + 0x24, 0, 3);
-                    repaired = true;
-                } else repaired = clearAnimalAppearance(record);
+                repaired = AppearanceRepair::prepare(definition, stub);
             }
         }
     } catch (const std::exception&) {

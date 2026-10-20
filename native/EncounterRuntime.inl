@@ -475,7 +475,7 @@ void prepareAttempt(UObject* service, void* entry, bool forced, bool eligible, A
         "respawn phase or positive quantity unavailable");
     // A restored choice may reach this callback after a builder budget skip.
     // Sanitize its existing owned points before any new members are created.
-    if (state.count == 0) prepareRoamingPoints(decision);
+    prepareRoamingPoints(decision);
     if (!forced && eligible && state.count == 0 && decision.phase == CyclePhase::Completed) {
         scope.newCycle = advanceCycle(decision, decision.cycle, RespawnCause::Natural, true, 0, options(key->definition), uniform);
         // Validate/import the target before advancing the save record. Failure

@@ -7,12 +7,16 @@ namespace LessWildlife {
 // The engine adds an instance number to the stub's FName. The caller supplies
 // its comparison name only: the original, unchanged population row identity.
 constexpr bool wildlifeRow(std::wstring_view row) {
-    if (row.size() < 4 || row[0] < L'0' || row[0] > L'9'
-        || row[1] < L'0' || row[1] > L'9' || row[2] != L'_') return false;
-    const auto index = (row[0] - L'0') * 10 + row[1] - L'0';
+    const auto separator = row.find(L'_');
+    if (separator == std::wstring_view::npos || separator == 0 || separator > 2) return false;
+    unsigned index = 0;
+    for (size_t i = 0; i < separator; ++i) {
+        if (row[i] < L'0' || row[i] > L'9') return false;
+        index = index * 10 + row[i] - L'0';
+    }
     if (index >= 64) return false;
     for (const auto& item : wildlifeDefinitions)
-        if (row.substr(3) == item.path.substr(item.path.find_last_of(L'.') + 1)) return true;
+        if (row.substr(separator + 1) == item.path.substr(item.path.find_last_of(L'.') + 1)) return true;
     return false;
 }
 

@@ -1,3 +1,9 @@
+## 1.0.1-dev
+
+- Improve stability when replacement encounters are rebuilt or unloaded.
+- Fix replacement enemies retaining another creature's appearance after spawning or loading a save.
+- Fix restored replacement groups keeping animal idle poses.
+
 ## 1.0.0
 
 - Choose replacement enemies for boars and wolves, with a group-size range of 1–10 for each enemy type.

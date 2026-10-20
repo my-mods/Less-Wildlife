@@ -11,9 +11,9 @@ namespace LessWildlife {
 class DecisionJournal {
     static constexpr std::uint32_t headMagic = 0x4c574a20;
     static constexpr unsigned probes = 8, words = 10;
-    static std::wstring prefix(const EncounterKey& key, unsigned probe, std::uint32_t member) {
+    static std::wstring prefix(const EncounterKey& key, unsigned probe, std::uint32_t member, bool appearance) {
         constexpr wchar_t hex[] = L"0123456789abcdef";
-        std::wstring result = member ? L"mod.lesswildlife.equipment.v1." : L"mod.lesswildlife.v1.";
+        std::wstring result = appearance ? L"mod.lesswildlife.appearance.v1." : member ? L"mod.lesswildlife.equipment.v1." : L"mod.lesswildlife.v1.";
         for (auto word : key.area) for (unsigned n = 0; n < 8; ++n) result += hex[(word >> (n * 4)) & 15];
         result += L"." + std::to_wstring(key.row) + L"." + std::to_wstring(key.definition) + L"." + std::to_wstring(probe);
         if (member) result += L"." + std::to_wstring(member);
@@ -54,12 +54,13 @@ class DecisionJournal {
         return decision ? std::optional{Record{*decision, member}} : std::nullopt;
     }
 public:
-    struct Slot { std::wstring root; std::optional<EncounterDecision> decision; unsigned active{}; std::uint32_t member{}; };
-    template<class Store> static Slot locate(Store& store, const EncounterKey& key, std::uint32_t member = 0) {
+    struct Slot { std::wstring root; std::optional<EncounterDecision> decision; unsigned active{}; std::uint32_t member{}; bool appearance{}; };
+    template<class Store> static Slot locate(Store& store, const EncounterKey& key, std::uint32_t member = 0, bool appearance = false) {
         if (!valid(key)) throw std::invalid_argument("journal encounter identity");
+        if (appearance && !member) throw std::invalid_argument("appearance member identity");
         std::optional<Slot> vacant;
         for (unsigned probe = 0; probe < probes; ++probe) {
-            auto root = prefix(key, probe, member);
+            auto root = prefix(key, probe, member, appearance);
             // Store checks the actual engine's hashed keys, including pairwise
             // collisions between this record's own names.
             if (!store.distinct(root, 21)) continue;
@@ -68,19 +69,19 @@ public:
                 const unsigned index = std::bit_cast<std::uint32_t>(*head) & 1;
                 auto saved = bank(store, root, index, member != 0);
                 if (!saved) throw std::runtime_error("committed encounter decision is damaged");
-                if (saved->decision.key == key && saved->member == member) return {std::move(root), saved->decision, index, member};
+                if (saved->decision.key == key && saved->member == member) return {std::move(root), saved->decision, index, member, appearance};
                 continue;
             }
             bool empty = !head;
             for (unsigned i = 0; empty && i < 20; ++i) empty = !store.get(name(root, i));
-            if (empty && !vacant) vacant = Slot{std::move(root), {}, 1, member};
+            if (empty && !vacant) vacant = Slot{std::move(root), {}, 1, member, appearance};
         }
         if (vacant) return std::move(*vacant);
         throw std::runtime_error("all encounter journal slots are occupied or invalid");
     }
     template<class Store> static void save(Store& store, Slot& slot, const EncounterDecision& next) {
         if (!valid(next) || (slot.decision && slot.decision->key != next.key)) throw std::invalid_argument("journal decision identity");
-        auto current = locate(store, next.key, slot.member);
+        auto current = locate(store, next.key, slot.member, slot.appearance);
         if (current.root != slot.root || current.decision != slot.decision) throw std::runtime_error("encounter journal changed during update");
         auto persisted = next;
         if (slot.member) persisted.groupCount = 0; // Equipment v1 remains byte-identical.
