@@ -76,7 +76,7 @@
         "impact": "patch",
         "rationale": "Release 1.0.1: stability improvements and inherited appearance/animal idle corrections",
         "majorOverride": false,
-        "reviewedInputs": "e31011c971d30c1ff16d17893813aa57522466469ae4dad7cde5d2f01c6240a4",
+        "reviewedInputs": "a1e2e676b876bd823b3560e9676d8e1e45f7b9e806e9917734d4d3f1ff81a3f2",
         "divergenceReviewed": false
       },
       "publication": {
