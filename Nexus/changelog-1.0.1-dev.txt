@@ -1,3 +1,0 @@
-- Improved stability when wildlife replacement encounters are rebuilt or unloaded.
-- Fix replacement enemies retaining another creature's appearance after spawning or loading a save.
-- Fix restored replacement groups keeping animal idle poses.

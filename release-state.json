@@ -74,9 +74,9 @@
       ],
       "pending": {
         "impact": "patch",
-        "rationale": "Fix persisted replacement appearances for all humanoids and restored animal idle points; includes previous native lifetime hardening",
+        "rationale": "Release 1.0.1: stability improvements and inherited appearance/animal idle corrections",
         "majorOverride": false,
-        "reviewedInputs": "375a764e7638106e3188d7cd5e986ad51b9b6ea850ae8844b62627ce18864f33",
+        "reviewedInputs": "e31011c971d30c1ff16d17893813aa57522466469ae4dad7cde5d2f01c6240a4",
         "divergenceReviewed": false
       },
       "publication": {

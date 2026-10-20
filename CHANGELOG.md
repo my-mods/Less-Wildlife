@@ -1,8 +1,8 @@
-## 1.0.1-dev
+## 1.0.1
 
-- Improve stability when replacement encounters are rebuilt or unloaded.
+- Improve stability when entering or leaving areas with replacement enemies.
 - Fix replacement enemies retaining another creature's appearance after spawning or loading a save.
-- Fix restored replacement groups keeping animal idle poses.
+- Fix replacement enemies using animal sitting or sleeping animations.
 
 ## 1.0.0
 
