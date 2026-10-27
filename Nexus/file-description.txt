@@ -1,1 +1,1 @@
-Choose wildlife sizing or replacement chance separately for boars and wolves. Use one shared enemy pool with conditional 1–10 group-size sliders. Enemy choices and counts persist through save loading until natural respawn.
+Update wildlife replacement for The Blood of Dawnwalker 1.1.

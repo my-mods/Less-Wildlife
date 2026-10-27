@@ -1,3 +1,3 @@
-# Wilder Wildlife - Customize Enemy Spawns 1.0.2-dev
+# Less Wildlife 1.0.2
 
 - Update wildlife replacement for The Blood of Dawnwalker 1.1.

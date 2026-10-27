@@ -6,7 +6,7 @@
   "author": "oOCamilleOo",
   "uploader": "oOCamilleOo",
   "language": "English",
-  "version": "1.0.2-dev",
+  "version": "1.0.2",
   "tags": [
     "Gameplay",
     "Quality of Life",
@@ -21,7 +21,7 @@
   "file": {
     "name": "Wilder Wildlife",
     "archive": "Less-Wildlife.zip",
-    "version": "1.0.2-dev",
+    "version": "1.0.2",
     "category": "main",
     "allowModManagerDownload": true,
     "primaryModManagerDownload": true,

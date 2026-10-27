@@ -76,7 +76,7 @@
         "impact": "patch",
         "rationale": "Dawnwalker 1.1 compatibility maintenance: updated used population and lifecycle layouts, scoped operation resolver and reproducible native build; settings and save formats unchanged.",
         "majorOverride": false,
-        "reviewedInputs": "8e1003d412035c9cb10e922af97aff44ac63ffdf605b3f1f39068b8037265c6c",
+        "reviewedInputs": "17e77962cfb06c8ac89eed3e921bbaae159ef0db236271238d4580e7823e896b",
         "divergenceReviewed": false
       },
       "publication": {
