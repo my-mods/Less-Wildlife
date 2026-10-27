@@ -1,3 +1,3 @@
 # Less Wildlife 1.0.2
 
-- Update wildlife replacement for The Blood of Dawnwalker 1.1.
+- Updated the mod for patch 1.1.
