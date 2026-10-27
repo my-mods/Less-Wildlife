@@ -241,7 +241,7 @@ void bindSchema() {
     types[7].bind(find(L"/Script/Dawnwalker.HumanoidNPCDefinition"));
     stubType = static_cast<UClass*>(types[6].object);
     humanoidType = static_cast<UClass*>(types[7].object);
-    require(stubType->GetPropertiesSize() == 0x270, "AI stub layout changed");
+    require(stubType->GetPropertiesSize() >= 0x168, "AI stub layout changed");
     randomAppearanceProperty = static_cast<FBoolProperty*>(field(humanoidType, L"bRandomizeAppearance", 0x4f8, 1, L"BoolProperty"));
     field(humanoidType, L"RandomizedAppearanceTable", 0x508, 8, L"ObjectProperty");
     banditClassName = FName(L"NPCDef_BanditBasic_Normal_C");
@@ -252,14 +252,14 @@ void bindSchema() {
     areaType = static_cast<UClass*>(types[0].object);
     entryType = static_cast<UStruct*>(types[1].object);
     rowType = static_cast<UStruct*>(types[2].object);
-    require(areaType->GetPropertiesSize() == 0x618 && entryType->GetPropertiesSize() == 0x100
+    require(areaType->GetPropertiesSize() >= 0x420 && entryType->GetPropertiesSize() == 0x100
             && rowType->GetPropertiesSize() == 0x118, "population struct size changed");
     field(areaType, L"Entries", 0x340, 16, L"ArrayProperty");
     field(areaType, L"StartConditions", 0x350, 16, L"ArrayProperty");
-    field(areaType, L"ActiveEntries", 0x360, 16, L"ArrayProperty");
-    field(areaType, L"GeneratedDataTable", 0x370, 8, L"ObjectProperty");
-    field(areaType, L"DynamicSpawnPoints", 0x388, 16, L"ArrayProperty");
-    field(areaType, L"DynamicActionPoints", 0x398, 16, L"ArrayProperty");
+    field(areaType, L"ActiveEntries", 0x368, 16, L"ArrayProperty");
+    field(areaType, L"GeneratedDataTable", 0x378, 8, L"ObjectProperty");
+    field(areaType, L"DynamicSpawnPoints", 0x390, 16, L"ArrayProperty");
+    field(areaType, L"DynamicActionPoints", 0x3a0, 16, L"ArrayProperty");
     field(entryType, L"PawnDefinition", 0, 40, L"SoftClassProperty");
     field(entryType, L"AIDefinition", 0x28, 8, L"ClassProperty");
     field(entryType, L"AIReactions", 0x30, 8, L"ClassProperty");
@@ -399,7 +399,7 @@ struct OperationList {
 void transform(UObject* area) {
     for (const auto& type : types) require(type.valid(), "population metadata expired");
     require(area && area->IsA(areaType), "builder owner is not a population area");
-    auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x360);
+    auto entries = read<Array>(area, 0x340), activeEntries = read<Array>(area, 0x368);
     require(arrayValid(entries, 64) && arrayValid(activeEntries, 64), "population entry limit or layout");
     auto selected = [](const DefinitionKey& key) { return definitionSpecies(key) != Species::None; };
     bool hasWildlife = false;
@@ -409,11 +409,11 @@ void transform(UObject* area) {
     auto conditions = read<Array>(area, 0x350);
     require(arrayValid(conditions, 64), "population start condition layout");
     if (conditions.count) { skip(area, SkipReason::Conditions); return; }
-    const bool pointsBuilt = read<Array>(area, 0x388).count != 0 || read<Array>(area, 0x398).count != 0;
+    const bool pointsBuilt = read<Array>(area, 0x390).count != 0 || read<Array>(area, 0x3a0).count != 0;
     // Guard areas also bound ordinary roaming packs. Preserve the game's
     // boundary and registration data; attached scripted spawn points are
     // excluded by the entry behavior/role/respawn checks below.
-    auto table = read<UDataTable*>(area, 0x370);
+    auto table = read<UDataTable*>(area, 0x378);
     if (!table || table->GetRowStruct() != rowType) { skip(area, SkipReason::Table); return; }
     auto& rows = table->GetRowMap();
     require(rows.Num() == activeEntries.count && rows.Num() <= 64 && rows.GetMaxIndex() <= 64, "generated row mapping changed");
@@ -525,7 +525,7 @@ void builder(UObject* area) {
     UObject* prior{};
     if (participate && area) try {
         owner = std::make_unique<ScopedObjectRef>(area);
-        prior = read<UObject*>(area, 0x370);
+        prior = read<UObject*>(area, 0x378);
     } catch (const std::exception&) { warning(L"Population builder object unavailable; normal game processing retained."); }
     original(area);
     if (!participate || !owner || !owner->valid() || !active || failed) return;
@@ -681,7 +681,7 @@ void stop() {
 using namespace RC;
 class LessWildlifeMod final : public CppUserModBase {
 public:
-    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"1.0.1"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
+    LessWildlifeMod() { ModName = L"Less Wildlife"; ModVersion = L"1.0.2-dev"; ModAuthors = L"oOCamilleOo"; ModDescription = L"Population adjustment and encounter replacement."; }
     void on_lua_start(StringViewType name, LuaMadeSimple::Lua& lua, LuaMadeSimple::Lua&, LuaMadeSimple::Lua&, LuaMadeSimple::Lua*) override {
         if (name != L"LessWildlife") return;
         lua.register_function("_LWConfigureReplacementSizesV3", [](const auto& l) {

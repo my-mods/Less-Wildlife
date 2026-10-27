@@ -48,7 +48,7 @@ bool capture(UObject* service, void* entry, RespawnEvent event, RespawnSnapshot&
     for (int i = 0; i < count; ++i) {
         auto stub = read<UObject*>(data, i * sizeof(void*));
         require(stub && stub->IsA(stubType), "respawn member type");
-        if (read<uint8_t>(stub, 0x58) & 0x10) ++sample.dead; else ++sample.living;
+        if (read<uint8_t>(stub, 0x58) & 0x08) ++sample.dead; else ++sample.living;
     }
     sample.recycled = read<int32_t>(entry, 0xd0);
     require(sample.recycled >= 0 && sample.recycled <= 65536, "respawn recycled ID count");

@@ -43,7 +43,7 @@ Two reserved banks, full-identity decoding, checksums, collision probes and a fi
 head switch protect against partial updates and occupied names. An invalid committed
 record fails validation. No global sidecar chooses outcomes for unrelated saves.
 `EncounterRuntime.inl` obtains FactsDB through reflected game-instance APIs with checked
-function pointers, fields and parameter layouts. Quest types belong to `/Script/Quest`.
+reflected function identities and parameter layouts. Quest types belong to `/Script/Quest`.
 Fact methods are resolved by name on the verified FactsDB default object, avoiding
 function-path punctuation assumptions. Missing bindings report their exact identity.
 This adapter performs no direct save-file IO.
@@ -92,8 +92,12 @@ including already armed members. Subsequent loads preserve disarming and looting
 These records use their own namespace and the reserved word in the checked record;
 equipment v1 records remain byte-identical in their separate namespace. Group records read v1 and v2; v2 uses the reserved word for the saved count.
 
-`NativeContract.hpp`, `RespawnContract.hpp` and `LifecycleContract.hpp` check the
-instruction ranges, call sites and layout-dependent functions actually used.
+`NativeContract.hpp` and `ContractData.hpp` validate the argument mappings, field
+accesses and linked calls used by the hooks, saved-decision hash and completion
+bookkeeping. Recorded RVAs are fast hints; moved code is located from the same
+required relationships, rejecting missing or ambiguous targets. `RespawnContract.hpp`
+and `LifecycleContract.hpp` share that validation. The 1.1 layouts use the moved
+population arrays, completed-member bit and population-owner pointer.
 Additional reflected field, class, property and native-function checks run at binding.
 These are capability checks, not game-version, storefront or whole-file hash gates.
 No FWeakObjectPtr constructor or serial allocation is used. Retained area identities

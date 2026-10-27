@@ -73,10 +73,10 @@
         "VortexExtension"
       ],
       "pending": {
-        "impact": "none",
-        "rationale": "Matches the verified Nexus release.",
+        "impact": "patch",
+        "rationale": "Dawnwalker 1.1 compatibility maintenance: updated used population and lifecycle layouts, scoped operation resolver and reproducible native build; settings and save formats unchanged.",
         "majorOverride": false,
-        "reviewedInputs": "f80c2e2fb0be1dd7a068db13d61bb557035656eb080884088bfd3c4c2f79accc",
+        "reviewedInputs": "8e1003d412035c9cb10e922af97aff44ac63ffdf605b3f1f39068b8037265c6c",
         "divergenceReviewed": false
       },
       "publication": {

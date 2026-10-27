@@ -1,5 +1,3 @@
-# Wilder Wildlife - Customize Enemy Spawns 1.0.1
+# Wilder Wildlife - Customize Enemy Spawns 1.0.2-dev
 
-- Improve stability when entering or leaving areas.
-- Fix replacement enemies retaining another creature's appearance.
-- Fix replacement enemies using animal animations.
+- Update wildlife replacement for The Blood of Dawnwalker 1.1.

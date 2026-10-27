@@ -174,14 +174,14 @@ void bind() {
     types[18].bind(find(L"/Script/Population.DynamicActionPoint"));
     types[19].bind(find(L"/Script/DogwoodInventory.InventorySubsystem"));
     auto inventory = static_cast<UClass*>(types[19].object);
-    require(inventory->GetPropertiesSize() == 0x4a0, "equipment inventory layout changed");
-    field(inventory, L"LoadedItemMap", 0x188, 0x50, L"MapProperty");
+    require(inventory->GetPropertiesSize() >= 0xc8, "equipment inventory layout changed");
+    // Equipment repair reads only the checked saved-record map, not LoadedItemMap.
     auto equipment = static_cast<FMapProperty*>(field(humanoidType, L"EquipmentSlots", 0x2a8, 0x50, L"MapProperty"));
     auto equipmentKey = equipment->GetKeyProp(), equipmentValue = equipment->GetValueProp();
     require(equipmentKey && equipmentKey->GetSize() == 1 && equipmentKey->GetClass().GetName() == L"EnumProperty"
         && equipmentValue && equipmentValue->GetSize() == 8 && equipmentValue->GetClass().GetName() == L"ObjectProperty",
         "stock equipment element layout changed");
-    require(static_cast<UClass*>(types[18].object)->GetPropertiesSize() == 0x440, "dynamic activity point layout changed");
+    require(static_cast<UClass*>(types[18].object)->GetPropertiesSize() >= 0x43c, "dynamic activity point layout changed");
     auto function = [](unsigned index, int size) {
         auto f = static_cast<UFunction*>(types[index].object);
         require(f->GetParmsSize() == size, "saved decision function parameters changed"); return f;
@@ -198,19 +198,13 @@ void bind() {
         field(f, L"FactName", 0, 8, L"StructProperty");
         field(f, i == 16 ? L"Value" : L"ReturnValue", 8, i == 14 ? 1 : 4, i == 14 ? L"BoolProperty" : L"IntProperty");
     }
-    auto facts = static_cast<UClass*>(types[13].object);
-    require(facts->GetPropertiesSize() == 0xd0, "saved facts layout changed");
-    field(facts, L"FactsDelegates", 0x80, 0x50, L"MapProperty");
     auto population = static_cast<UClass*>(types[17].object);
-    require(population->GetPropertiesSize() == 0x9b0, "population registry layout changed");
+    require(population->GetPropertiesSize() >= 0x3a0, "population registry layout changed");
     field(population, L"Registry", 0x350, 0x50, L"MapProperty");
     reactionsProperty = field(rowType, L"AIReactions", 0x60, 8, L"ClassProperty");
     factionProperty = field(rowType, L"AIFaction", 0x68, 8, L"StructProperty");
     hostileFaction = FName(L"RebelAI.Faction.GlobalBandit");
-    for (auto [index, rva] : std::array<std::pair<unsigned, uint32_t>, 5>{{{9, 0x1b77bcc}, {12, 0x2326a00},
-            {14, 0x5792908}, {15, 0x251880c}, {16, 0x5792a00}}})
-        require(reinterpret_cast<void*>(static_cast<UFunction*>(types[index].object)->GetFuncPtr()) == engine<void*>(rva),
-            "saved decision function binding changed");
+    // ProcessEvent uses the reflected function and its checked parameter layout.
     std::wstring error;
     require(LifecycleContract::validate(error), "saved decision / suppression code contract changed");
     std::random_device source; std::seed_seq seed{source(), source(), source(), source()}; random.seed(seed);
@@ -246,7 +240,7 @@ struct Facts {
         std::array<uint32_t, 21> hashes{}; require(count <= hashes.size(), "journal key limit");
         for (unsigned i = 0; i < count; ++i) {
             FName name((root + L".w" + std::to_wstring(i)).c_str());
-            hashes[i] = engine<uint32_t(*)(void*, const FName*)>(0x13de99c)(database.object, &name);
+            hashes[i] = reinterpret_cast<uint32_t(*)(void*, const FName*)>(NativeContract::address(NativeContract::Id::Hash))(database.object, &name);
             for (unsigned j = 0; j < i; ++j) if (hashes[i] == hashes[j]) return false;
         }
         return true;
@@ -287,8 +281,8 @@ CountEdit countEdit(void* row,const EncounterDecision& decision,bool requireCapa
     if(!counts.known) { require(!decision.groupCount,"group size baseline unavailable"); return {}; }
     if(requireCapacity && decision.groupCount) require(counts.capacityReady,"group point capacity not prepared");
     auto area=handle->object.object;
-    auto table=read<UDataTable*>(area,0x370); require(table && table->GetRowStruct()==rowType,"group count table");
-    auto entries=read<Array>(area,0x360);require(arrayValid(entries,64),"group count active entries");
+    auto table=read<UDataTable*>(area,0x378); require(table && table->GetRowStruct()==rowType,"group count table");
+    auto entries=read<Array>(area,0x368);require(arrayValid(entries,64),"group count active entries");
     unsigned ordinal=0;bool found=false;
     for(auto& pair:table->GetRowMap()) {
         if(pair.Value==row && identify(decision.key.area,pair.Key)==std::optional{decision.key}){found=true;break;}
@@ -361,7 +355,7 @@ void prepareRoamingPoints(const EncounterDecision& decision) {
     auto area = handle->object.object;
     require(area->IsA(areaType) && read<std::array<uint32_t, 4>>(area, 0x1e0) == decision.key.area, "respawn area identity changed");
     require(read<Array>(area, 0x350).count == 0, "respawn area is quest-gated");
-    auto table = read<UDataTable*>(area, 0x370); require(table && table->GetRowStruct() == rowType, "respawn area table unavailable");
+    auto table = read<UDataTable*>(area, 0x378); require(table && table->GetRowStruct() == rowType, "respawn area table unavailable");
     auto& rows = table->GetRowMap(); require(rows.Num() <= 64 && rows.GetMaxIndex() <= 64, "respawn row limit");
     uint32_t ordinal{}; bool found{};
     for (auto& row : rows) {
@@ -369,18 +363,18 @@ void prepareRoamingPoints(const EncounterDecision& decision) {
         ++ordinal;
     }
     require(found, "respawn source row missing");
-    const uint32_t group = read<uint32_t>(area, 0x414) * 1000u + ordinal + 1;
-    auto points = read<Array>(area, 0x398); require(arrayValid(points, 4096), "dynamic activity point limit");
+    const uint32_t group = read<uint32_t>(area, 0x41c) * 1000u + ordinal + 1;
+    auto points = read<Array>(area, 0x3a0); require(arrayValid(points, 4096), "dynamic activity point limit");
     auto property = montageProperty->GetInner(); Value empty(property);
     struct Point { std::unique_ptr<ScopedObjectRef> object; std::unique_ptr<Value> backup; int ordinal; };
     auto parametersFor = [&](const ScopedObjectRef& point, int index) {
         require(active && handle->object.valid() && point.valid(), "roaming point owner expired");
-        const auto current = read<Array>(area, 0x398);
+        const auto current = read<Array>(area, 0x3a0);
         require(arrayValid(current,4096) && index>=0 && index<current.count
             && read<UObject*>(current.data,size_t(index)*8)==point.object, "roaming point membership changed");
         require(read<uint32_t>(point.object, 0x438) == group, "roaming point group changed");
         auto parameters = read<unsigned char*>(point.object, 0x410);
-        require(parameters && read<uint64_t>(parameters, 0x280) == read<uint64_t>(engine<void*>(0xa06c7f8), 0), "dynamic activity parameter type");
+        require(parameters && read<uint64_t>(parameters, 0x280) == read<uint64_t>(NativeContract::montageTypeAddress(), 0), "dynamic activity parameter type");
         // These stock points use whole assets, never subobjects. Check the
         // entire soft-reference header before passing it to engine copying.
         const auto value = read<std::array<unsigned char,40>>(parameters, 0x288);
@@ -405,7 +399,7 @@ void prepareRoamingPoints(const EncounterDecision& decision) {
         for (auto& item : changes) {
             parametersFor(*item.object, item.ordinal);
             ++changed;
-            engine<void(*)(UObject*, void*, const void*)>(0x1e95b04)(item.object->object, nullptr, empty.data);
+            reinterpret_cast<void(*)(UObject*, void*, const void*)>(NativeContract::address(NativeContract::Id::SetMontage))(item.object->object, nullptr, empty.data);
             require(property->Identical(parametersFor(*item.object, item.ordinal) + 0x288, empty.data), "roaming point readback failed");
         }
     } catch (...) {
@@ -414,7 +408,7 @@ void prepareRoamingPoints(const EncounterDecision& decision) {
             auto& item = changes[--changed];
             try {
                 parametersFor(*item.object, item.ordinal);
-                engine<void(*)(UObject*, void*, const void*)>(0x1e95b04)(item.object->object, nullptr, item.backup->data);
+                reinterpret_cast<void(*)(UObject*, void*, const void*)>(NativeContract::address(NativeContract::Id::SetMontage))(item.object->object, nullptr, item.backup->data);
                 require(property->Identical(parametersFor(*item.object, item.ordinal) + 0x288, item.backup->data), "roaming point rollback failed");
             } catch (...) { restored = false; }
         }
@@ -434,7 +428,7 @@ Members members(void* entry, UObject* sought = nullptr) {
         auto stub = read<UObject*>(data, i * 8);
         TypeRef identity; identity.bind(stub);
         require(stub->IsA(stubType), "encounter member class");
-        if (!(read<uint8_t>(stub, 0x58) & 0x10)) ++result.living;
+        if (!(read<uint8_t>(stub, 0x58) & 0x08)) ++result.living;
         if (stub == sought) result.contains = true;
     }
     return result;
@@ -491,7 +485,7 @@ void prepareAttempt(UObject* service, void* entry, bool forced, bool eligible, A
 void queued(UObject* service, UObject* stub) {
     if (!active || !configurationReady || failed || GetCurrentThreadId() != gameThread || !stub || !stub->IsA(stubType)) return;
     auto entry = read<void*>(stub, 0xe8); auto key = entryKey(entry); if (!key) return;
-    if (!(read<uint8_t>(stub, 0x58) & 0x10)) return;
+    if (!(read<uint8_t>(stub, 0x58) & 0x08)) return;
     auto state = members(entry, stub); if (!state.contains || state.living) return;
     Facts store(service); auto saved = DecisionJournal::locate(store, *key); if (!saved.decision) return;
     auto decision = *saved.decision;
@@ -526,19 +520,19 @@ void bindActivity(UObject* stub, int16_t phase, void* context, void* flags) {
         try {
             require(stub && stub->IsA(stubType), "suppression stub class");
             auto entry = read<void*>(stub, 0xe8);
-            if (entry == attemptScope->entry && !(read<uint8_t>(stub, 0x58) & 0x10)) {
+            if (entry == attemptScope->entry && !(read<uint8_t>(stub, 0x58) & 0x08)) {
                 require(entryKey(entry) == std::optional{attemptScope->decision->key} && members(entry, stub).contains,
                     "suppression encounter registration");
                 require(read<uint8_t>(stub, 0xd0) == 0 && read<void*>(stub, 0x38)
                     && read<int32_t>(stub, 0xe0) <= 0 && read<int32_t>(stub, 0xe4) == 0,
                     "suppression requires a new stub without a live actor or activity binding");
-                auto population = read<UObject*>(stub, 0x170);
+                auto population = read<UObject*>(stub, 0x160);
                 auto record = registryRecord(population, read<uint32_t>(stub, 0x40));
                 require(!(read<uint8_t>(record, 0x10) & 8), "suppression registry already completed");
-                engine<CompleteStub>(0x5949c78)(stub);
+                reinterpret_cast<CompleteStub>(NativeContract::address(NativeContract::Id::Complete))(stub);
                 // The game's routine records the dead member and schedules its
                 // original NextDay policy. Its d0==0 path touches no live actor.
-                require((read<uint8_t>(stub, 0x58) & 0x10) && (read<uint8_t>(registryRecord(population, read<uint32_t>(stub, 0x40)), 0x10) & 8),
+                require((read<uint8_t>(stub, 0x58) & 0x08) && (read<uint8_t>(registryRecord(population, read<uint32_t>(stub, 0x40)), 0x10) & 8),
                     "suppression completion was not recorded");
                 ++attemptScope->suppressed;
             }
@@ -556,7 +550,7 @@ void stop() {
     std::lock_guard guard(areaMutex); areaByIndex.clear(); areaByGuid.clear(); areaSlots.clear(); pruneArea = 0;
 }
 void start() {
-    auto candidate = engine<void*>(0x144e8d4);
+    auto candidate = NativeContract::address(NativeContract::Id::Activity);
     require(MH_CreateHook(candidate, reinterpret_cast<void*>(&bindActivity), reinterpret_cast<void**>(&originalBind)) == MH_OK,
         "suppression activity hook creation failed");
     bindTarget = candidate;

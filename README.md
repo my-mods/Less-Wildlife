@@ -10,7 +10,7 @@ Replacement chances default to 0%. Enemy choices default to On and No spawn defa
 
 ## Requirements
 
-- The Blood of Dawnwalker.
+- The Blood of Dawnwalker 1.1.
 - Required: [UE4SS for Dawnwalker by Vercadi](https://www.nexusmods.com/thebloodofdawnwalker/mods/18) **1.3 (RC6) or later**, with C++ mod support, native population hooks, delayed game-thread callbacks, a frame counter and the owned soft-reference path API. If the replacement helper cannot validate the population code or layouts, the existing population controls remain available.
 - Mod Setting Menu 1.0.7.1 or newer is optional for the in-game settings. Enable `HookProcessConsoleExec = 1` in your UE4SS loader profile for live Apply.
 

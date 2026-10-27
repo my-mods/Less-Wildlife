@@ -16,8 +16,8 @@ void generate(UObject* area,int32_t ordinal,void* context,void* row) {
         pendingRestore = false; // Never retry a write through rejected storage.
         try {
             require(handle && handle->object.valid() && tableOwner && tableOwner->valid(), "point capacity owner expired");
-            require(read<UObject*>(area,0x370)==tableOwner->object, "point capacity table replaced");
-            const auto entries=read<Array>(area,0x360);
+            require(read<UObject*>(area,0x378)==tableOwner->object, "point capacity table replaced");
+            const auto entries=read<Array>(area,0x368);
             require(entries.data==borrowedEntries.data && entries.count==borrowedEntries.count && entries.capacity==borrowedEntries.capacity,
                     "point capacity entry storage replaced");
             auto table=static_cast<UDataTable*>(tableOwner->object);
@@ -44,9 +44,9 @@ void generate(UObject* area,int32_t ordinal,void* context,void* row) {
         if(active && configurationReady && !failed && GetCurrentThreadId()==gameThread && area) {
             ScopedObjectRef areaOwner(area);
             require(area->IsA(areaType),"point capacity area class");
-            auto entries=read<Array>(area,0x360);
+            auto entries=read<Array>(area,0x368);
             require(arrayValid(entries,64) && ordinal>=0 && ordinal<entries.count,"point capacity entry mapping");
-            auto table=read<UDataTable*>(area,0x370);
+            auto table=read<UDataTable*>(area,0x378);
             tableOwner=std::make_unique<ScopedObjectRef>(table);
             require(table->GetRowStruct()==rowType,"point capacity table");
             unsigned position=0;
@@ -63,7 +63,7 @@ void generate(UObject* area,int32_t ordinal,void* context,void* row) {
                 auto entry=entries.data+ordinal*0x100;
                 const auto& counts=handle->counts[key->row];
                 auto n=std::max({groupLimit,counts.original[0],counts.original[2]});
-                auto actions=read<Array>(area,0x398),spawns=read<Array>(area,0x388),montages=read<Array>(entry,0xb0);
+                auto actions=read<Array>(area,0x3a0),spawns=read<Array>(area,0x390),montages=read<Array>(entry,0xb0);
                 require(arrayValid(actions,4096) && arrayValid(spawns,4096) && arrayValid(montages,64),"point capacity arrays");
                 const auto multiplier=read<float>(entry,0xc0);
                 require(std::isfinite(multiplier) && multiplier>=0 && multiplier<=128,"roaming point multiplier");
@@ -88,7 +88,7 @@ void generate(UObject* area,int32_t ordinal,void* context,void* row) {
 }
 void stop(){if(target){MH_DisableHook(target);MH_RemoveHook(target);target=nullptr;}}
 void start(){
-    auto candidate=reinterpret_cast<unsigned char*>(GetModuleHandleW(nullptr))+0x16896e4;
+    auto candidate=NativeContract::address(NativeContract::Id::Points);
     require(MH_CreateHook(candidate,reinterpret_cast<void*>(&generate),reinterpret_cast<void**>(&original))==MH_OK,"group point capacity hook creation");
     target=candidate;require(MH_EnableHook(target)==MH_OK,"group point capacity hook activation");
 }

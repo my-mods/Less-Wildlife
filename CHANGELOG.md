@@ -1,3 +1,7 @@
+## 1.0.2-dev
+
+- Update wildlife replacement for The Blood of Dawnwalker 1.1.
+
 ## 1.0.1
 
 - Improve stability when entering or leaving areas.

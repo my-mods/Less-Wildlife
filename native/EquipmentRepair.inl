@@ -40,7 +40,7 @@ bool hasEquipment(UObject* inventory, uint32_t member, uint8_t wantedSlot) {
 
 bool prepare(UObject* definition, UObject* stub) {
     using namespace EncounterRuntime;
-    if (!configurationReady || failed || (read<uint8_t>(stub, 0x58) & 0x10)) return false;
+    if (!configurationReady || failed || (read<uint8_t>(stub, 0x58) & 0x08)) return false;
     auto record = read<unsigned char*>(stub, 0x38);
     auto entry = read<void*>(stub, 0xe8);
     auto key = entryKey(entry);
